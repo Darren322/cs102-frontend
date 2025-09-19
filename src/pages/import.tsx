@@ -80,7 +80,7 @@ export default function App() {
 
       // label bg
       const label = d.name != "unknown" ? `${d.name} ${(d.confidence).toFixed(0)}%` : "";
-      const padX = 6, padY = 4;
+      const padX = 6;
       const textW = ctx.measureText(label).width;
       const boxX = x, boxY = Math.max(0, y - 22);
       ctx.fillStyle = "rgba(34,197,94,0.85)";

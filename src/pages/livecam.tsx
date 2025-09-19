@@ -83,7 +83,7 @@ export default function LiveCam() {
           return;
         }
 
-        const t0 = performance.now();
+      
         try {
           const form = new FormData();
           form.append("image", blob, "frame.jpg");
