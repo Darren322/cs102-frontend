@@ -99,7 +99,7 @@ export default function LiveCam() {
     }
 
     // Open a WebSocket (use "wss://" in production behind TLS)
-    const ws = new WebSocket("ws://api.attendanceapi.xyz/ws/live-scan");
+    const ws = new WebSocket("wss://api.attendanceapi.xyz/ws/live-scan");
     wsRef.current = ws;
 
     ws.onopen = () => {
