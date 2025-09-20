@@ -22,7 +22,7 @@ export default function App() {
 
   try {
     setLoading(true);
-    const res = await fetch("http://112.199.250.89:8081/api/recognition/scan", {
+    const res = await fetch("https://api.attendanceapi.xyz/api/recognition/scan", {
       method: "POST",
       body: form,
     });
