@@ -22,11 +22,12 @@ export default function App() {
 
   try {
     setLoading(true);
-    const res = await fetch("https://api.attendanceapi.xyz/api/recognition/scan", {
+    const res = await fetch("http://localhost:8081/api/recognition/scan", {
       method: "POST",
       body: form,
     });
     const json = (await res.json()) as ScanResponseItem[];
+   
     setDets(json);
   } finally {
     setLoading(false);

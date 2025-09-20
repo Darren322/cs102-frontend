@@ -5,63 +5,39 @@ import type { Det } from "../components/utils/draw";
 /**
  * LiveCam
  * =======
- * Monolithic, high-FPS implementation of:
- *  - Camera capture via getUserMedia
- *  - Binary WebSocket streaming of compressed frames to the backend
- *  - Receiving detections and drawing them on a canvas overlay (imperative)
- *  - Lightweight UI state (FPS, errors, recognized names)
- *
- * Design choices (for performance):
- *  - We keep the hot path IMPERATIVE (no React state on every frame).
- *    WS onmessage → normalize dets → drawDetections(canvas). No re-render needed.
- *  - React state is updated slowly (e.g., FPS every 500ms) or for small, infrequent things (names list).
- *  - A simple "busy" flag prevents overlapping encodes/sends.
+ * Frontend for real-time face recognition:
+ *  - Captures camera frames with getUserMedia()
+ *  - Streams frames to backend via WebSocket (binary WebP blobs)
+ *  - Backend runs detection and sends JSON with bounding boxes
+ *  - Overlay is drawn on <canvas> using requestAnimationFrame
+ *  - FPS is measured as "how many NEW detection frames arrive per second"
  */
 export default function LiveCam() {
-  // Refs to DOM elements we draw on / read from
-  const videoRef = useRef<HTMLVideoElement | null>(null);   // <video> playing the live camera
-  const captureRef = useRef<HTMLCanvasElement | null>(null); // hidden <canvas> we draw frames into before encoding
-  const overlayRef = useRef<HTMLCanvasElement | null>(null); // on-screen overlay where we draw boxes/labels
+  // === DOM element refs (imperative handles, not state) ===
+  const videoRef = useRef<HTMLVideoElement | null>(null);   // <video> showing live camera
+  const captureRef = useRef<HTMLCanvasElement | null>(null); // hidden canvas to encode frames
+  const overlayRef = useRef<HTMLCanvasElement | null>(null); // overlay canvas to draw boxes
 
-  // Top-level UI state
-  const [running, setRunning] = useState(false); // toggles WebSocket loop on/off
-  const [err, setErr] = useState<string>("");    // user-facing error message
+  // === UI state (React state → re-renders UI when changed) ===
+  const [running, setRunning] = useState(false); // start/stop stream
+  const [err, setErr] = useState<string>("");    // error messages
+  const [students, setStudents] = useState<string[]>([]); // recognized names
+  const [fps, setFps] = useState<number>(0);     // measured backend FPS
 
-  // Backpressure/loop control (NOT React state to keep hot path fast)
-  const busyRef = useRef(false); // true while we are encoding/sending the current frame
-
-  // FPS tracking (we compute per-message cadence and then expose a smoothed UI value)
-  const lastTickRef = useRef<number>(performance.now()); // time of last detection message
-  const fpsRef = useRef<number>(0);                      // instantaneous FPS computed on each WS message
-  const fpsSmoothRef = useRef<number>(0);                // EMA-smoothed FPS (for display)
-  const [fpsDisplay, setFpsDisplay] = useState<{ inst: number; avg: number }>({
-    inst: 0,
-    avg: 0,
-  });
-
-  // List of unique recognized names (simple session accumulator)
-  const [students, setStudents] = useState<string[]>([]);
-
-  // A single persistent WebSocket connection while "running" is true
-  const wsRef = useRef<WebSocket | null>(null);
-
-  /**
-   * BACKEND coordinate space
-   * ------------------------
-   * We capture at this size, send at this size, and the backend returns detections IN THIS SPACE.
-   * drawDetections() will scale boxes from (BACKEND_W × BACKEND_H) to the displayed <video> size.
-   */
+  // === Backend capture size (fixed) ===
   const BACKEND_W = 640;
   const BACKEND_H = 480;
 
-  /**
-   * 1) Start camera once on mount.
-   *    - Requests user media at BACKEND_W × BACKEND_H (so we can draw exactly that into the capture canvas).
-   *    - On unmount, stops all tracks.
-   */
+  // === Non-state refs (do NOT trigger re-renders) ===
+  const busyRef = useRef(false);                 // true while encoding/sending
+  const wsRef = useRef<WebSocket | null>(null);  // active WebSocket
+  const latestDetsRef = useRef<Det[] & { seq?: number }>([]); // buffer latest detections
+
+  /** 1) Camera setup — run once on mount */
   useEffect(() => {
     (async () => {
       try {
+        // Request user camera at backend resolution
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { width: BACKEND_W, height: BACKEND_H, facingMode: "user" },
           audio: false,
@@ -75,101 +51,63 @@ export default function LiveCam() {
       }
     })();
 
+    // Cleanup: stop camera tracks when component unmounts
     return () => {
       const tracks = (videoRef.current?.srcObject as MediaStream | null)?.getTracks() ?? [];
       tracks.forEach((t) => t.stop());
     };
   }, []);
 
-  /**
-   * 2) Open/close WebSocket when "running" changes.
-   *    - Receives detections from server
-   *    - Normalizes payload into { x, y, w, h, name, confidence } in BACKEND pixel space
-   *    - Imperatively draws using drawDetections (no React state per frame)
-   *    - Updates names list & FPS counters
-   */
+  /** 2) WebSocket setup (open on start, close on stop) */
   useEffect(() => {
     if (!running) {
-      // If we were running, close and clear the WS reference
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
+      wsRef.current?.close();
+      wsRef.current = null;
       return;
     }
 
-    // Open a WebSocket (use "wss://" in production behind TLS)
+    // IMPORTANT: use wss:// in production
     const ws = new WebSocket("wss://api.attendanceapi.xyz/ws/live-scan");
     wsRef.current = ws;
 
-    ws.onopen = () => {
-      setErr(""); // clear any prior error
-    };
+    ws.onopen = () => setErr("");
 
     ws.onmessage = (event) => {
       try {
-        /**
-         * Server message format
-         * ---------------------
-         * We accept either:
-         *  A: a plain array:    [{ x, y, w|width, h|height, name?, score?|confidence? }, ...]
-         *  B: an envelope:      { dets: [ ...same items... ], ... }
-         */
+        // Parse backend response
         const payload = JSON.parse(event.data);
+        const seq = payload.seq ?? performance.now(); // unique frame id
         const rawDets: any[] = Array.isArray(payload)
           ? payload
           : Array.isArray(payload?.dets)
           ? payload.dets
           : [];
 
-        // Normalize to your Det shape IN BACKEND PIXEL SPACE
+        // Normalize to Det[]
         const detsForDraw: Det[] = rawDets.map((d) => {
-          // Allow both {w,h} and {width,height}
           let x = Number(d.x ?? 0);
           let y = Number(d.y ?? 0);
           let w = Number(d.w ?? d.width ?? 0);
           let h = Number(d.h ?? d.height ?? 0);
 
-          // If values look normalized (0..1), convert to pixels of BACKEND space
-          const looksNormalized = x <= 1.5 && y <= 1.5 && w <= 1.5 && h <= 1.5;
-          if (looksNormalized) {
+          // If numbers look normalized (0..1), scale to backend pixels
+          if (x <= 1.5 && y <= 1.5 && w <= 1.5 && h <= 1.5) {
             x *= BACKEND_W; y *= BACKEND_H; w *= BACKEND_W; h *= BACKEND_H;
           }
-
-          return {
-            x,
-            y,
-            w,
-            h,
-            name: d.name ?? "Unknown",
-            confidence: d.confidence,
-          };
+          return { x, y, w, h, name: d.name ?? "Unknown", confidence: d.confidence };
         });
 
-        // Imperative draw — fast path (no React re-render)
-        const video = videoRef.current!;
-        const overlay = overlayRef.current!;
-        drawDetections(detsForDraw, video, overlay, BACKEND_W, BACKEND_H);
+        // Attach seq so drawing loop can tell if frame is new
+        (detsForDraw as any).seq = seq;
+        latestDetsRef.current = detsForDraw;
 
-        // Update names list (small, occasional mutation)
+        // Update recognized names
         setStudents((prev) => {
           const newNames = detsForDraw
             .map((d) => d.name)
             .filter((n) => n && n !== "Unknown");
           return Array.from(new Set([...prev, ...newNames]));
         });
-
-        // FPS: compute instantaneous FPS from message cadence, then smooth with EMA
-        const t1 = performance.now();
-        const dt = t1 - lastTickRef.current;
-        lastTickRef.current = t1;
-        const inst = 1000 / Math.max(1, dt);
-        fpsRef.current = inst;
-
-        const alpha = 0.2; // smoothing factor for EMA (higher = more reactive)
-        fpsSmoothRef.current = fpsSmoothRef.current
-          ? fpsSmoothRef.current * (1 - alpha) + inst * alpha
-          : inst;
       } catch (e) {
         console.error("WS parse error:", e, event.data);
         setErr("Invalid WS response");
@@ -177,32 +115,20 @@ export default function LiveCam() {
     };
 
     ws.onerror = () => setErr("WebSocket error");
-    ws.onclose = () => { /* closed by server or cleanup */ };
+    ws.onclose = () => {};
 
-    // Cleanup: close the socket if running toggles off or component unmounts
     return () => {
-      try { ws.close(); } catch {}
+      ws.close();
       if (wsRef.current === ws) wsRef.current = null;
     };
   }, [running]);
 
-  /**
-   * 3) Capture & send loop
-   *    - Pulls the current video frame into the hidden canvas at BACKEND size.
-   *    - Encodes to JPEG (quality 0.5) and sends the Blob over the open WebSocket.
-   *    - Uses busyRef to avoid overlapping encode/send operations.
-   *    - Uses a setTimeout-based loop to roughly target ~33 fps (if backend is fast).
-   *
-   * Notes:
-   *  - We do NOT use React state for the loop; setTimeout is cheaper and predictable here.
-   *  - If the socket isn’t open or encode fails, we back off briefly and retry.
-   */
+  /** 3) Capture + send loop (encode → send blob) */
   useEffect(() => {
     if (!running) return;
     let timer: number;
 
     const tick = () => {
-      // If we’re still encoding/sending previous frame, try again ASAP
       if (busyRef.current) {
         timer = window.setTimeout(tick, 1);
         return;
@@ -211,12 +137,11 @@ export default function LiveCam() {
       const video = videoRef.current!;
       const cap = captureRef.current!;
       if (!video || !cap || video.readyState < 2) {
-        // Camera not ready → wait a bit longer
         timer = window.setTimeout(tick, 60);
         return;
       }
 
-      // Draw current camera frame into the hidden canvas at BACKEND size
+      // Draw video frame into hidden canvas
       cap.width = BACKEND_W;
       cap.height = BACKEND_H;
       const ctx = cap.getContext("2d")!;
@@ -225,61 +150,78 @@ export default function LiveCam() {
       busyRef.current = true;
       cap.toBlob(
         (blob) => {
+          busyRef.current = false;
           if (!blob) {
-            // Encode failed → small backoff
-            busyRef.current = false;
-            timer = window.setTimeout(tick, 100);
+            timer = window.setTimeout(tick, 30);
             return;
           }
           const ws = wsRef.current;
           if (!ws || ws.readyState !== WebSocket.OPEN) {
-            // Socket not ready → backoff slightly
-            busyRef.current = false;
-            timer = window.setTimeout(tick, 200);
+            timer = window.setTimeout(tick, 100);
             return;
           }
-
-          // Send Blob directly (no FileReader → lower latency & overhead)
           try {
-            ws.send(blob);
+            ws.send(blob); // send compressed frame
           } catch {
             setErr("Send failed");
           } finally {
-            // Allow next frame and schedule next iteration
-            busyRef.current = false;
-            timer = window.setTimeout(tick, 20); // ~33 fps if server is fast; RTT ultimately caps this
+            timer = window.setTimeout(tick, 10); // next iteration
           }
         },
-        "image/jpeg", // Encoding format; try "image/webp" if your CPU encodes WebP faster
-        0.5           // Quality (0..1). Lower → smaller blobs → less bandwidth → possibly higher FPS.
+        "image/webp", // WebP usually faster + smaller than JPEG
+        0.5           // quality (0..1)
       );
     };
 
-    // Kick off the loop
     tick();
-
-    // Cleanup: stop the loop
     return () => window.clearTimeout(timer);
   }, [running]);
 
-  /**
-   * 4) FPS display heartbeat
-   *    - Updates the visible FPS numbers every 500 ms using smoothed refs.
-   *    - This avoids re-rendering the whole component on each frame.
-   */
+  /** 4) Drawing loop (requestAnimationFrame) + FPS measurement */
   useEffect(() => {
-    const id = window.setInterval(() => {
-      setFpsDisplay({ inst: fpsRef.current, avg: fpsSmoothRef.current });
-    }, 500);
-    return () => window.clearInterval(id);
+    let rafId: number;
+    let frames = 0;
+    let lastSeq: number | null = null;
+    let lastFpsUpdate = performance.now();
+
+    const loop = () => {
+      rafId = requestAnimationFrame(loop);
+
+      const video = videoRef.current;
+      const overlay = overlayRef.current;
+      const dets = latestDetsRef.current;
+
+      if (video && overlay) {
+        drawDetections(dets, video, overlay, BACKEND_W, BACKEND_H);
+      }
+
+      // Count only when backend seq changes (new frame)
+      const currentSeq = (dets as any)?.seq ?? null;
+      if (currentSeq !== null && currentSeq !== lastSeq) {
+        frames++;
+        lastSeq = currentSeq;
+      }
+
+      // Update FPS once per second
+      const now = performance.now();
+      if (now - lastFpsUpdate >= 1000) {
+        setFps(frames);
+        frames = 0;
+        lastFpsUpdate = now;
+      }
+    };
+
+    loop();
+    return () => cancelAnimationFrame(rafId);
   }, []);
 
+  // === UI rendering ===
   return (
     <div className="flex flex-row">
       <div className="p-4 space-y-3">
         <h2 className="text-lg font-semibold">Live Camera (frontend overlay)</h2>
 
-        {/* Controls + status (very cheap to re-render) */}
+        {/* Controls + FPS display */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => setRunning((s) => !s)}
@@ -288,23 +230,12 @@ export default function LiveCam() {
             {running ? "Stop" : "Start"}
           </button>
 
-          {/* FPS readout (updates every 500ms) */}
-          <span className="text-sm text-gray-700">
-            FPS: {fpsDisplay.inst.toFixed(1)}{" "}
-            <span className="text-gray-400">(avg {fpsDisplay.avg.toFixed(1)})</span>
-          </span>
-
-          {/* Shows while encode/send is in progress for the current frame */}
-          {busyRef.current && <span className="text-sm text-gray-500">processing…</span>}
-
-          {/* User-facing error message from camera/WS */}
+          <span className="text-sm text-gray-700">FPS: {fps}</span>
           {err && <span className="text-sm text-red-600">{err}</span>}
         </div>
 
-        {/* Video + overlay canvas.
-            The overlay canvas is drawn IMPERATIVELY in ws.onmessage via drawDetections(). */}
+        {/* Video with overlay canvas */}
         <div className="relative inline-block">
-          {/* Explicit width/height ensure video.clientWidth/Height are correct for drawDetections scaling */}
           <video
             ref={videoRef}
             width={BACKEND_W}
@@ -321,11 +252,11 @@ export default function LiveCam() {
           />
         </div>
 
-        {/* Hidden capture canvas used to encode frames before sending */}
+        {/* Hidden capture canvas */}
         <canvas ref={captureRef} className="hidden" />
       </div>
 
-      {/* Simple table of unique recognized names for this session */}
+      {/* Table of recognized students */}
       <table className="mt-4 border-collapse border border-gray-300">
         <thead>
           <tr className="bg-gray-100">
