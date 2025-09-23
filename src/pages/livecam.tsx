@@ -574,7 +574,7 @@ export default function SmartAttendanceSystem() {
                             <p className="text-gray-500 text-center">No students detected yet</p>
                           ) : (
                             <div className="space-y-2">
-                              {presentList.map((student, i) => (
+                              {presentList.map((student) => (
                                 <div key={student.name} className="flex justify-between items-center bg-white p-3 rounded border">
                                   <span className="font-medium">{student.name}</span>
                                   <span className="text-xs text-gray-500">
