@@ -442,7 +442,7 @@ export default function SmartAttendanceSystem() {
         {/* Session Status */}
 
       </div>
-
+{/* CDD */}
       {/* Main Content */}
       <div className="flex-1 overflow-hidden">
         <div className="h-full overflow-y-auto">
