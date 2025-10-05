@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, Upload, Play, Square, Users, Clock, Settings, FileText, User, Edit3, Check, X, School, Plus } from "lucide-react";
+import { Camera, Upload, Play, Square, Users, Clock, FileText, User, Edit3, Check, X, School, Plus, SettingsIcon } from "lucide-react";
 import { Live } from "../components/dashboard";
 import { Session } from "../components/sessions";
 import { Students } from "../components/students";
+import { Settings } from "../components/settings";
+
 
 // Types for events and attendance records
 type PresentEvent = {
@@ -403,11 +405,11 @@ export default function SmartAttendanceSystem() {
   const sidebarItems = [
     { id: "dashboard", label: "Dashboard", icon: Users, text: "Managed your Dashboard here." },
     { id: "sessions", label: "Sessions", icon: Clock, text: "Manage your sesions." },
-    { id: "students", label: "Students", icon: User, text:"Manage or add students here." },
-    { id: "settings", label: "Settings", icon: Settings, text: "" },
+    { id: "students", label: "Students", icon: User, text: "Manage or add students here." },
+    { id: "settings", label: "Settings", icon: SettingsIcon, text: "Modify Settings" },
 
   ];
-  let curText = sidebarItems.find((tab)=>tab.id == activeTab);
+  let curText = sidebarItems.find((tab) => tab.id == activeTab);
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -445,14 +447,14 @@ export default function SmartAttendanceSystem() {
       <div className="flex-1 overflow-hidden">
         <div className="h-full overflow-y-auto">
           {/* Header */}
-          <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="bg-white border-b border-gray-200 px-6 py-4 pb-6">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-gray-800">
                   {activeTab === "dashboard" ? "Attendance Dashboard" :
                     activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
                 </h2>
-                
+
                 <p className="text-gray-600 mt-1">{curText['text']}</p>
               </div>
 
@@ -498,6 +500,8 @@ export default function SmartAttendanceSystem() {
                   </button>
                 </div>
               )}
+
+              
             </div>
           </div>
 
@@ -544,6 +548,16 @@ export default function SmartAttendanceSystem() {
             {
               activeTab == "students" && (
                 <Students
+                  attendanceRecords={attendanceRecords}
+                  editingRecord={editingRecord}
+                  updateRecord={updateRecord}
+                  setEditingRecord={setEditingRecord}
+                />
+              )
+            }
+            {
+              activeTab == "settings" && (
+                <Settings
                   attendanceRecords={attendanceRecords}
                   editingRecord={editingRecord}
                   updateRecord={updateRecord}
