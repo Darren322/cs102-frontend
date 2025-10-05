@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, Upload, Play, Square, Users, Clock, Settings, FileText, User, Edit3, Check, X } from "lucide-react";
+import { Camera, Upload, Play, Square, Users, Clock, Settings, FileText, User, Edit3, Check, X, School, Plus } from "lucide-react";
+import { Live } from "../components/dashboard";
+import { Session } from "../components/sessions";
+import { Students } from "../components/students";
 
 // Types for events and attendance records
 type PresentEvent = {
@@ -398,12 +401,13 @@ export default function SmartAttendanceSystem() {
   }, [running, recognitionMode]);
 
   const sidebarItems = [
-    { id: "dashboard", label: "Dashboard", icon: Users },
-    { id: "sessions", label: "Sessions", icon: Clock },
-    { id: "students", label: "Students", icon: User },
-    { id: "reports", label: "Reports", icon: FileText },
-    { id: "settings", label: "Settings", icon: Settings },
+    { id: "dashboard", label: "Dashboard", icon: Users, text: "Managed your Dashboard here." },
+    { id: "sessions", label: "Sessions", icon: Clock, text: "Manage your sesions." },
+    { id: "students", label: "Students", icon: User, text:"Manage or add students here." },
+    { id: "settings", label: "Settings", icon: Settings, text: "" },
+
   ];
+  let curText = sidebarItems.find((tab)=>tab.id == activeTab);
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -422,8 +426,8 @@ export default function SmartAttendanceSystem() {
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
                 className={`w-full flex items-center px-6 py-3 text-left transition-colors ${activeTab === item.id
-                    ? "bg-blue-50 text-blue-700 border-r-2 border-blue-700"
-                    : "text-gray-700 hover:bg-gray-50"
+                  ? "bg-blue-50 text-blue-700 border-r-2 border-blue-700"
+                  : "text-gray-700 hover:bg-gray-50"
                   }`}
               >
                 <Icon size={20} className="mr-3" />
@@ -434,7 +438,7 @@ export default function SmartAttendanceSystem() {
         </nav>
 
         {/* Session Status */}
-        
+
       </div>
 
       {/* Main Content */}
@@ -448,7 +452,8 @@ export default function SmartAttendanceSystem() {
                   {activeTab === "dashboard" ? "Attendance Dashboard" :
                     activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
                 </h2>
-                <p className="text-gray-600 mt-1">Manage and track student attendance</p>
+                
+                <p className="text-gray-600 mt-1">{curText['text']}</p>
               </div>
 
               {activeTab === "dashboard" && !sessionActive && (
@@ -469,292 +474,84 @@ export default function SmartAttendanceSystem() {
                   </button>
                 </div>
               )}
+
+              {activeTab === "sessions" && (
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => startSession('live')}
+                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Plus size={18} className="mr-2" />
+                    Create Sessions
+                  </button>
+                </div>
+              )}
+
+              {activeTab === "students" && (
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => startSession('live')}
+                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Plus size={18} className="mr-2" />
+                    Add Students
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
           <div className="p-6">
             {activeTab === "dashboard" && (
-              <div className="space-y-6">
-                {/* Session Controls */}
-                {sessionActive && (
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-800">Active Session</h3>
-                        <p className="text-gray-600">Session ID: {currentSessionId}</p>
-                        <p className="text-sm text-gray-500">Mode: {recognitionMode?.toUpperCase()}</p>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        {recognitionMode === 'live' && (
-                          <button
-                            onClick={() => setRunning(!running)}
-                            className={`flex items-center px-4 py-2 rounded-lg transition-colors ${running
-                                ? "bg-red-600 text-white hover:bg-red-700"
-                                : "bg-green-600 text-white hover:bg-green-700"
-                              }`}
-                          >
-                            {running ? <Square size={18} className="mr-2" /> : <Play size={18} className="mr-2" />}
-                            {running ? "Stop Recognition" : "Start Recognition"}
-                          </button>
-                        )}
-
-                        <button
-                          onClick={() => setShowManualEntry(!showManualEntry)}
-                          className="flex items-center px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
-                        >
-                          <Edit3 size={18} className="mr-2" />
-                          Manual Entry
-                        </button>
-
-                        <button
-                          onClick={stopSession}
-                          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                        >
-                          End Session
-                        </button>
-                      </div>
-                    </div>
-
-                    {err && (
-                      <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-2 rounded-lg mb-4">
-                        {err}
-                      </div>
-                    )}
-
-                    {/* Recognition Interface */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <div>
-                        {recognitionMode === 'live' ? (
-                          <div className="relative">
-                            <video
-                              ref={videoRef}
-                              width={WIDTH}
-                              height={HEIGHT}
-                              autoPlay
-                              muted
-                              playsInline
-                              className={`rounded-lg border ${running ? "hidden" : "block"}`}
-                            />
-                            <img
-                              ref={serverImgRef}
-                              width={WIDTH}
-                              height={HEIGHT}
-                              className={`rounded-lg border ${running ? "block" : "hidden"}`}
-                              alt="Recognition feed"
-                            />
-                            <canvas ref={captureRef} className="hidden" />
-                          </div>
-                        ) : (
-                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                            <Upload size={48} className="mx-auto text-gray-400 mb-4" />
-                            <p className="text-gray-600 mb-4">Upload an image for face recognition</p>
-                            <input
-                              ref={fileInputRef}
-                              type="file"
-                              accept="image/*"
-                              onChange={handleFileUpload}
-                              className="hidden"
-                            />
-                            <button
-                              onClick={() => fileInputRef.current?.click()}
-                              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                            >
-                              Choose Image
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Live Present List */}
-                      <div>
-                        <h4 className="font-semibold mb-3">Currently Present</h4>
-                        <div className="bg-gray-50 rounded-lg p-4 max-h-80 overflow-y-auto">
-                          {presentList.length === 0 ? (
-                            <p className="text-gray-500 text-center">No students detected yet</p>
-                          ) : (
-                            <div className="space-y-2">
-                              {presentList.map((student) => (
-                                <div key={student.name} className="flex justify-between items-center bg-white p-3 rounded border">
-                                  <span className="font-medium">{student.name}</span>
-                                  <span className="text-xs text-gray-500">
-                                    {new Date(student.since).toLocaleTimeString()}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Manual Entry Form */}
-                    {showManualEntry && (
-                      <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                        <h4 className="font-semibold mb-3">Manual Attendance Entry</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <input
-                            type="text"
-                            placeholder="Student ID"
-                            value={manualStudentId}
-                            onChange={(e) => setManualStudentId(e.target.value)}
-                            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                          <input
-                            type="text"
-                            placeholder="Remarks (optional)"
-                            value={manualRemarks}
-                            onChange={(e) => setManualRemarks(e.target.value)}
-                            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                          <div className="flex gap-2">
-                            <button
-                              onClick={handleManualEntry}
-                              className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                            >
-                              <Check size={18} className="mr-1" />
-                              Add
-                            </button>
-                            <button
-                              onClick={() => setShowManualEntry(false)}
-                              className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                            >
-                              <X size={18} className="mr-1" />
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Attendance Records Table */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                  <div className="px-6 py-4 border-b border-gray-200">
-                    <h3 className="text-lg font-semibold text-gray-800">Attendance Records</h3>
-                    <p className="text-sm text-gray-600">All attendance records for current and past sessions</p>
-                  </div>
-
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Session ID</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student ID</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Confidence</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Marking Type</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remarks</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {attendanceRecords.length === 0 ? (
-                          <tr>
-                            <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                              No attendance records yet. Start a session to begin tracking attendance.
-                            </td>
-                          </tr>
-                        ) : (
-                          attendanceRecords.map((record) => (
-                            <tr key={record.id} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {record.sessionId.split('_')[1]}...
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {record.studentId}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {new Date(record.timestamp).toLocaleString()}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="flex items-center">
-                                  <div className={`w-2 h-2 rounded-full mr-2 ${record.confidence >= 90 ? 'bg-green-500' :
-                                      record.confidence >= 70 ? 'bg-yellow-500' : 'bg-red-500'
-                                    }`}></div>
-                                  {record.confidence.toFixed(1)}%
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                {editingRecord === record.id ? (
-                                  <select
-                                    value={record.markingType}
-                                    onChange={(e) => updateRecord(record.id, 'markingType', e.target.value as 'automatic' | 'manual')}
-                                    className="text-xs border rounded px-2 py-1"
-                                  >
-                                    <option value="automatic">Automatic</option>
-                                    <option value="manual">Manual</option>
-                                  </select>
-                                ) : (
-                                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${record.markingType === 'automatic'
-                                      ? 'bg-blue-100 text-blue-800'
-                                      : 'bg-purple-100 text-purple-800'
-                                    }`}>
-                                    {record.markingType}
-                                  </span>
-                                )}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                {editingRecord === record.id ? (
-                                  <select
-                                    value={record.status}
-                                    onChange={(e) => updateRecord(record.id, 'status', e.target.value)}
-                                    className="text-xs border rounded px-2 py-1"
-                                  >
-                                    <option value="present">Present</option>
-                                    <option value="absent">Absent</option>
-                                    <option value="late">Late</option>
-                                  </select>
-                                ) : (
-                                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${record.status === 'present' ? 'bg-green-100 text-green-800' :
-                                      record.status === 'late' ? 'bg-yellow-100 text-yellow-800' :
-                                        'bg-red-100 text-red-800'
-                                    }`}>
-                                    {record.status}
-                                  </span>
-                                )}
-                              </td>
-                              <td className="px-6 py-4 text-sm text-gray-900">
-                                {editingRecord === record.id ? (
-                                  <input
-                                    type="text"
-                                    value={record.remarks}
-                                    onChange={(e) => updateRecord(record.id, 'remarks', e.target.value)}
-                                    className="text-xs border rounded px-2 py-1 w-full"
-                                    placeholder="Add remarks..."
-                                  />
-                                ) : (
-                                  record.remarks || '-'
-                                )}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <button
-                                  onClick={() => setEditingRecord(editingRecord === record.id ? null : record.id)}
-                                  className="text-blue-600 hover:text-blue-900 mr-3"
-                                >
-                                  {editingRecord === record.id ? 'Save' : 'Edit'}
-                                </button>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
+              <Live
+                sessionActive={sessionActive}
+                currentSessionId={currentSessionId}
+                recognitionMode={recognitionMode}
+                running={running}
+                err={err}
+                presentList={presentList}
+                attendanceRecords={attendanceRecords}
+                editingRecord={editingRecord}
+                showManualEntry={showManualEntry}
+                manualStudentId={manualStudentId}
+                manualRemarks={manualRemarks}
+                videoRef={videoRef}
+                serverImgRef={serverImgRef}
+                captureRef={captureRef}
+                fileInputRef={fileInputRef}
+                WIDTH={WIDTH}
+                HEIGHT={HEIGHT}
+                setRunning={setRunning}
+                setShowManualEntry={setShowManualEntry}
+                stopSession={stopSession}
+                handleFileUpload={handleFileUpload}
+                handleManualEntry={handleManualEntry}
+                updateRecord={updateRecord}
+                setEditingRecord={setEditingRecord}
+              />
             )}
+            {
+              activeTab == "sessions" && (
+                <Session
+                  attendanceRecords={attendanceRecords}
+                  editingRecord={editingRecord}
+                  updateRecord={updateRecord}
+                  setEditingRecord={setEditingRecord}
+                />
+              )
+            }
 
-            {/* Other tabs content */}
-            {activeTab !== "dashboard" && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <p className="text-gray-600">
-                  {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} content will be implemented here.
-                </p>
-              </div>
-            )}
+            {
+              activeTab == "students" && (
+                <Students
+                  attendanceRecords={attendanceRecords}
+                  editingRecord={editingRecord}
+                  updateRecord={updateRecord}
+                  setEditingRecord={setEditingRecord}
+                />
+              )
+            }
+
           </div>
         </div>
       </div>
