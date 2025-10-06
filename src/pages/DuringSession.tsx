@@ -428,8 +428,8 @@ export default function SmartAttendanceSystem() {
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
                 className={`w-full flex items-center px-6 py-3 text-left transition-colors ${activeTab === item.id
-                  ? "bg-blue-50 text-blue-700 border-r-2 border-blue-700"
-                  : "text-gray-700 hover:bg-gray-50"
+                    ? "bg-blue-50 text-blue-700 border-r-2 border-blue-700"
+                    : "text-gray-700 hover:bg-gray-50"
                   }`}
               >
                 <Icon size={20} className="mr-3" />
@@ -440,9 +440,9 @@ export default function SmartAttendanceSystem() {
         </nav>
 
         {/* Session Status */}
-
+        
       </div>
-{/* CDD */}
+
       {/* Main Content */}
       <div className="flex-1 overflow-hidden">
         <div className="h-full overflow-y-auto">
