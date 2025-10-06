@@ -6,10 +6,10 @@ import SessionsPage from './pages/Session';
 import Sidemenu from './components/Sidebar'
 import DashboardPage from "./pages/Dashboard";
 import RostersPage from "./pages/Roster";
-
+import { Students } from "./components/students";
 function App() {
   return (
-    <div className="p-6 space-y-4 flex flex-row ">
+    <div className="mx-5 space-y-4 flex flex-row ">
      
 
       {/* Navigation */}
@@ -21,6 +21,7 @@ function App() {
         <Route path="/rosters" element={<RostersPage />} />
         <Route path="/import" element={<Import />} />
         <Route path="/session_start" element={<LiveCam />} />
+        <Route path="/students" element={<Students />} />
           <Route path="/login" element={<LoginPage />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
         <Route path="/sessions" element={<SessionsPage />} />

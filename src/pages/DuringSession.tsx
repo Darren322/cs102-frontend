@@ -414,35 +414,8 @@ export default function SmartAttendanceSystem() {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <div className="w-64 bg-white shadow-lg border-r border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-gray-800">Smart Attendance</h1>
-          <p className="text-sm text-gray-600 mt-1">Professor Dashboard</p>
-        </div>
-
-        <nav className="mt-6">
-          {sidebarItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center px-6 py-3 text-left transition-colors ${activeTab === item.id
-                    ? "bg-blue-50 text-blue-700 border-r-2 border-blue-700"
-                    : "text-gray-700 hover:bg-gray-50"
-                  }`}
-              >
-                <Icon size={20} className="mr-3" />
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* Session Status */}
-        
-      </div>
-
+     
+{/* CDD */}
       {/* Main Content */}
       <div className="flex-1 overflow-hidden">
         <div className="h-full overflow-y-auto">
@@ -530,6 +503,7 @@ export default function SmartAttendanceSystem() {
                 stopSession={stopSession}
                 handleFileUpload={handleFileUpload}
                 handleManualEntry={handleManualEntry}
+                updateRecord={updateRecord}
                 setEditingRecord={setEditingRecord}
               />
             )}
