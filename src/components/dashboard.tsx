@@ -1,8 +1,8 @@
 "use client"
 
 import { Play, Square, Edit3, Upload, Check, X } from "lucide-react"
-import React from "react"
 import type { LiveProps } from "../components/utils/dashboard-types"
+import { useEffect, useState } from "react";
 
 
 
@@ -15,9 +15,6 @@ export function Live({
   presentList,
   attendanceRecords,
   editingRecord,
-  showManualEntry,
-  manualStudentId,
-  manualRemarks,
   videoRef,
   serverImgRef,
   captureRef,
@@ -25,13 +22,65 @@ export function Live({
   WIDTH,
   HEIGHT,
   setRunning,
-  setShowManualEntry,
   stopSession,
   handleFileUpload,
   handleManualEntry,
   updateRecord,
   setEditingRecord,
 }: LiveProps) {
+  const [showManualEntry, setShowManualEntry] = useState(false);
+  const [manualStudentId, setManualStudentId] = useState("");
+  const [manualRemarks, setManualRemarks] = useState("");
+  const [localRecords, setLocalRecords] = useState(attendanceRecords);
+  const updateLocalRecord = (id, field, value) => {
+  setLocalRecords(prev =>
+    prev.map(r => r.id === id ? { ...r, [field]: value } : r)
+  );
+};
+
+  const handleLocalAdd = () => {
+    if (!manualStudentId.trim()) return;
+
+    const newRecord = {
+      id: `REC_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+      sessionId: currentSessionId,
+      studentId: manualStudentId,
+      timestamp: Date.now(),
+      confidence: 100,
+      markingType: "manual",
+      status: "present",
+      remarks: manualRemarks,
+    };
+
+    // Prevent duplicates
+    if (localRecords.some(r => r.studentId === manualStudentId && r.sessionId === currentSessionId)) {
+      alert("Student already marked present!");
+      return;
+    }
+
+    setLocalRecords(prev => [newRecord, ...prev]);
+    setManualStudentId("");
+    setManualRemarks("");
+    setShowManualEntry(false);
+  };
+  useEffect(() => {
+    // Only run this when session goes from active → inactive
+    if (!running && sessionActive && currentSessionId) {
+      // Example: automatically mark a student present
+      const autoRecord = {
+        id: `REC_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+        sessionId: currentSessionId,
+        studentId: "STUDENT_AUTO_01", // <-- you can replace this dynamically
+        timestamp: Date.now(),
+        confidence: 95,
+        markingType: "automatic",
+        status: "present",
+        remarks: "Auto-marked when recognition stopped",
+      };
+
+      setLocalRecords((prev) => [autoRecord, ...prev]);
+    }
+  }, [running]);
   return (
     <div className="space-y-6">
       {sessionActive && (
@@ -47,11 +96,10 @@ export function Live({
               {recognitionMode === "live" && (
                 <button
                   onClick={() => setRunning(!running)}
-                  className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
-                    running
-                      ? "bg-red-600 text-white hover:bg-red-700"
-                      : "bg-green-600 text-white hover:bg-green-700"
-                  }`}
+                  className={`flex items-center px-4 py-2 rounded-lg transition-colors ${running
+                    ? "bg-red-600 text-white hover:bg-red-700"
+                    : "bg-green-600 text-white hover:bg-green-700"
+                    }`}
                 >
                   {running ? <Square size={18} className="mr-2" /> : <Play size={18} className="mr-2" />}
                   {running ? "Stop Recognition" : "Start Recognition"}
@@ -154,19 +202,19 @@ export function Live({
                   type="text"
                   placeholder="Student ID"
                   value={manualStudentId}
-                  onChange={(e) => updateRecord("manualStudentId", "manualStudentId", e.target.value)}
+                  onChange={(e) => setManualStudentId(e.target.value)}
                   className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <input
                   type="text"
                   placeholder="Remarks (optional)"
                   value={manualRemarks}
-                  onChange={(e) => updateRecord("manualRemarks", "manualRemarks", e.target.value)}
+                  onChange={(e) => setManualRemarks(e.target.value)}
                   className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <div className="flex gap-2">
                   <button
-                    onClick={handleManualEntry}
+                    onClick={handleLocalAdd}
                     className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                   >
                     <Check size={18} className="mr-1" />
@@ -223,14 +271,14 @@ export function Live({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {attendanceRecords.length === 0 ? (
+              {localRecords.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
                     No attendance records yet. Start a session to begin tracking attendance.
                   </td>
                 </tr>
               ) : (
-                attendanceRecords.map((record) => (
+                localRecords.map((record) => (
                   <tr key={record.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {record.sessionId.split("_")[1]}...
@@ -244,13 +292,12 @@ export function Live({
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div
-                          className={`w-2 h-2 rounded-full mr-2 ${
-                            record.confidence >= 90
-                              ? "bg-green-500"
-                              : record.confidence >= 70
+                          className={`w-2 h-2 rounded-full mr-2 ${record.confidence >= 90
+                            ? "bg-green-500"
+                            : record.confidence >= 70
                               ? "bg-yellow-500"
                               : "bg-red-500"
-                          }`}
+                            }`}
                         ></div>
                         {record.confidence.toFixed(1)}%
                       </div>
@@ -259,7 +306,7 @@ export function Live({
                       {editingRecord === record.id ? (
                         <select
                           value={record.markingType}
-                          onChange={(e) => updateRecord(record.id, "markingType", e.target.value)}
+                          onChange={(e) => updateLocalRecord(record.id, "markingType", e.target.value)}
                           className="text-xs border rounded px-2 py-1"
                         >
                           <option value="automatic">Automatic</option>
@@ -267,11 +314,10 @@ export function Live({
                         </select>
                       ) : (
                         <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            record.markingType === "automatic"
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-purple-100 text-purple-800"
-                          }`}
+                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${record.markingType === "automatic"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-purple-100 text-purple-800"
+                            }`}
                         >
                           {record.markingType}
                         </span>
@@ -281,7 +327,7 @@ export function Live({
                       {editingRecord === record.id ? (
                         <select
                           value={record.status}
-                          onChange={(e) => updateRecord(record.id, "status", e.target.value)}
+                          onChange={(e) => updateLocalRecord(record.id, "status", e.target.value)}
                           className="text-xs border rounded px-2 py-1"
                         >
                           <option value="present">Present</option>
@@ -290,13 +336,12 @@ export function Live({
                         </select>
                       ) : (
                         <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            record.status === "present"
-                              ? "bg-green-100 text-green-800"
-                              : record.status === "late"
+                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${record.status === "present"
+                            ? "bg-green-100 text-green-800"
+                            : record.status === "late"
                               ? "bg-yellow-100 text-yellow-800"
                               : "bg-red-100 text-red-800"
-                          }`}
+                            }`}
                         >
                           {record.status}
                         </span>
@@ -307,7 +352,7 @@ export function Live({
                         <input
                           type="text"
                           value={record.remarks}
-                          onChange={(e) => updateRecord(record.id, "remarks", e.target.value)}
+                          onChange={(e) => updateLocalRecord(record.id, "remarks", e.target.value)}
                           className="text-xs border rounded px-2 py-1 w-full"
                           placeholder="Add remarks..."
                         />

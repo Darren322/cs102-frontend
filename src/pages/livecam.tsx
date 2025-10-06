@@ -530,7 +530,6 @@ export default function SmartAttendanceSystem() {
                 stopSession={stopSession}
                 handleFileUpload={handleFileUpload}
                 handleManualEntry={handleManualEntry}
-                updateRecord={updateRecord}
                 setEditingRecord={setEditingRecord}
               />
             )}
