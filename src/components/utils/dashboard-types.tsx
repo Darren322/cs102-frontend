@@ -1,43 +1,30 @@
 export type LiveProps = {
-  sessionActive: boolean
-  currentSessionId: string
-  recognitionMode: string
-  running: boolean
-  err?: string
+  sessionActive: boolean;
+  currentSessionId: string;
+  recognitionMode: "live" | "upload" | null;
+  running: boolean;
+  err: string;
+  presentList: Array<{ name: string; since: number }>;
+  attendanceRecords: any[];
+  editingRecord: string | null;
+  videoRef: React.RefObject<HTMLVideoElement>;
+  serverImgRef: React.RefObject<HTMLImageElement>;
+  captureRef: React.RefObject<HTMLCanvasElement>;
+  fileInputRef: React.RefObject<HTMLInputElement>;
+  WIDTH: number;
+  HEIGHT: number;
+  setRunning: (v: boolean) => void;
+  stopSession: () => void;
+  handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleManualEntry: () => void;
+  updateRecord: (id: string, field: any, value: any) => void;
+  setEditingRecord: (id: string | null) => void;
 
-  presentList: { name: string; since: string }[]
-  attendanceRecords: {
-    id: string
-    sessionId: string
-    studentId: string
-    timestamp: string
-    confidence: number
-    markingType: "automatic" | "manual"
-    status: string
-    remarks?: string
-  }[]
+  // NEW:
+  fps?: number;      // outgoing FPS (camera → backend)
+  recvFps?: number;  // incoming FPS (backend → client), optional
+};
 
-  editingRecord: string | null
-  showManualEntry: boolean
-  manualStudentId: string
-  manualRemarks: string
-
-  videoRef: React.RefObject<HTMLVideoElement>
-  serverImgRef: React.RefObject<HTMLImageElement>
-  captureRef: React.RefObject<HTMLCanvasElement>
-  fileInputRef: React.RefObject<HTMLInputElement>
-
-  WIDTH: number
-  HEIGHT: number
-
-  setRunning: (val: boolean) => void
-  setShowManualEntry: (val: boolean) => void
-  stopSession: () => void
-  handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void
-  handleManualEntry: () => void
-  updateRecord: (id: string, field: string, value: any) => void
-  setEditingRecord: (id: string | null) => void
-}
 
 export type AttendanceRecord = {
   id: string

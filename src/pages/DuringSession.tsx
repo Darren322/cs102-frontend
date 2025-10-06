@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, Upload, Play, Square, Users, Clock, FileText, User, Edit3, Check, X, School, Plus, SettingsIcon } from "lucide-react";
+import { Camera, Upload, Plus, SettingsIcon, Users, Clock, User } from "lucide-react";
 import { Live } from "../components/dashboard";
 import { Session } from "../components/sessions";
 import { Students } from "../components/students";
 import { Settings } from "../components/settings";
-
 
 // Types for events and attendance records
 type PresentEvent = {
@@ -27,8 +26,8 @@ type AttendanceRecord = {
   studentId: string;
   timestamp: number;
   confidence: number;
-  markingType: 'automatic' | 'manual';
-  status: 'present' | 'absent' | 'late';
+  markingType: "automatic" | "manual";
+  status: "present" | "absent" | "late";
   remarks: string;
 };
 
@@ -46,7 +45,7 @@ export default function SmartAttendanceSystem() {
   // UI state
   const [activeTab, setActiveTab] = useState("dashboard");
   const [sessionActive, setSessionActive] = useState(false);
-  const [recognitionMode, setRecognitionMode] = useState<'live' | 'upload' | null>(null);
+  const [recognitionMode, setRecognitionMode] = useState<"live" | "upload" | null>(null);
   const [running, setRunning] = useState(false);
   const [err, setErr] = useState<string>("");
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
@@ -61,6 +60,16 @@ export default function SmartAttendanceSystem() {
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [presentList, setPresentList] = useState<Array<{ name: string; since: number }>>([]);
 
+  // FPS state
+  const [fps, setFps] = useState(0);            // frames sent per second (camera -> backend)
+  const frameCountRef = useRef(0);
+  const fpsTimerRef = useRef<number | null>(null);
+
+  // (Optional) received FPS if you also want to show server->client stream rate
+  const [recvFps, setRecvFps] = useState(0);
+  const recvCountRef = useRef(0);
+  const recvFpsTimerRef = useRef<number | null>(null);
+
   // Config
   const WIDTH = 640;
   const HEIGHT = 480;
@@ -72,12 +81,12 @@ export default function SmartAttendanceSystem() {
   };
 
   // Start new session
-  const startSession = (mode: 'live' | 'upload') => {
+  const startSession = (mode: "live" | "upload") => {
     const sessionId = generateSessionId();
     setCurrentSessionId(sessionId);
     setRecognitionMode(mode);
     setSessionActive(true);
-    if (mode === 'live') {
+    if (mode === "live") {
       setRunning(true);
     }
   };
@@ -92,71 +101,62 @@ export default function SmartAttendanceSystem() {
   };
 
   // Add attendance record (with duplicate prevention)
-  // Add attendance record (with duplicate prevention)
-  // Add attendance record (with duplicate prevention)
-  const addAttendanceRecord = (studentId: string, confidence: number = 1.0, markingType: 'automatic' | 'manual' = 'automatic', remarks: string = '') => {
+  const addAttendanceRecord = (
+    studentId: string,
+    confidence: number = 1.0,
+    markingType: "automatic" | "manual" = "automatic",
+    remarks: string = ""
+  ) => {
     // Check if the student is already marked as present in the current session
     const existingRecord = attendanceRecords.find(
       (record) =>
         record.studentId === studentId &&
         record.sessionId === currentSessionId &&
-        record.status === 'present'
+        record.status === "present"
     );
 
-    // If the student is already marked as present, skip adding another record
     if (existingRecord) {
       console.log(`Student ${studentId} is already marked present in this session. Skipping.`);
-      return false; // No new record added
+      return false;
     }
 
-    // If no existing record found, create a new attendance record
     const newRecord: AttendanceRecord = {
       id: `REC_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
       sessionId: currentSessionId,
       studentId,
       timestamp: Date.now(),
-      confidence: confidence > 1 ? confidence : confidence * 100, // Convert confidence to percentage if it's < 1
+      confidence: confidence > 1 ? confidence : confidence * 100,
       markingType,
-      status: 'present',
-      remarks
+      status: "present",
+      remarks,
     };
 
-    // Add the new record to the state, check for duplicates before updating state
     setAttendanceRecords((prev) => {
-      // Check if the student is already present in the state to avoid duplicates
-      const existingIndex = prev.findIndex(
+      const dupIdx = prev.findIndex(
         (record) =>
           record.studentId === studentId &&
           record.sessionId === currentSessionId &&
-          record.status === 'present'
+          record.status === "present"
       );
-
-      if (existingIndex !== -1) {
-        console.log(`Student ${studentId} is already marked as present in the records. Skipping.`);
-        return prev; // Skip adding if the record exists
-      }
-
-      // If no duplicate, add the new record
-      return [newRecord, ...prev]; // Add the new record at the start
+      if (dupIdx !== -1) return prev;
+      return [newRecord, ...prev];
     });
 
     console.log(`Attendance marked for student ${studentId} in session ${currentSessionId}`);
-    return true; // Return true to indicate a record was successfully added
+    return true;
   };
-
 
   // Manual attendance entry (with duplicate check)
   const handleManualEntry = () => {
     if (manualStudentId.trim()) {
-      const wasAdded = addAttendanceRecord(manualStudentId, 1.0, 'manual', manualRemarks);
+      const wasAdded = addAttendanceRecord(manualStudentId, 1.0, "manual", manualRemarks);
       if (wasAdded) {
         setManualStudentId("");
         setManualRemarks("");
         setShowManualEntry(false);
       } else {
-        // Show error message if student already marked
         setErr(`Student ${manualStudentId} is already marked present in this session`);
-        setTimeout(() => setErr(""), 3000); // Clear error after 3 seconds
+        setTimeout(() => setErr(""), 3000);
       }
     }
   };
@@ -164,18 +164,20 @@ export default function SmartAttendanceSystem() {
   // Handle file upload (with duplicate prevention)
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && file.type.startsWith('image/')) {
+    if (file && file.type.startsWith("image/")) {
       // Simulate processing uploaded image
       setTimeout(() => {
-        // Mock detection results
-        const mockStudents = ['STUDENT_001', 'STUDENT_002', 'STUDENT_003'];
+        const mockStudents = ["STUDENT_001", "STUDENT_002", "STUDENT_003"];
         const newlyAdded: string[] = [];
 
-        mockStudents.forEach(id => {
-          const wasAdded = addAttendanceRecord(id, 85 + Math.random() * 10, 'automatic', 'Detected from uploaded image');
-          if (wasAdded) {
-            newlyAdded.push(id);
-          }
+        mockStudents.forEach((id) => {
+          const wasAdded = addAttendanceRecord(
+            id,
+            85 + Math.random() * 10,
+            "automatic",
+            "Detected from uploaded image"
+          );
+          if (wasAdded) newlyAdded.push(id);
         });
 
         if (newlyAdded.length > 0) {
@@ -183,24 +185,17 @@ export default function SmartAttendanceSystem() {
         }
       }, 1000);
     }
-    // Reset file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   // Update record
   const updateRecord = (id: string, field: keyof AttendanceRecord, value: any) => {
-    setAttendanceRecords(prev =>
-      prev.map(record =>
-        record.id === id ? { ...record, [field]: value } : record
-      )
-    );
+    setAttendanceRecords((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
   };
 
   // Camera setup
   useEffect(() => {
-    if (recognitionMode !== 'live') return;
+    if (recognitionMode !== "live") return;
 
     (async () => {
       try {
@@ -223,9 +218,8 @@ export default function SmartAttendanceSystem() {
   }, [recognitionMode]);
 
   // WebSocket connection
-  // WebSocket connection
   useEffect(() => {
-    if (!running || recognitionMode !== 'live') {
+    if (!running || recognitionMode !== "live") {
       wsRef.current?.close();
       wsRef.current = null;
       return;
@@ -237,11 +231,18 @@ export default function SmartAttendanceSystem() {
 
     ws.onopen = () => setErr("");
     ws.onerror = () => setErr("WebSocket error");
-    ws.onclose = () => { };
+    ws.onclose = () => {};
+
+    // Start recv FPS ticker on connect
+    recvFpsTimerRef.current = window.setInterval(() => {
+      setRecvFps(recvCountRef.current);
+      recvCountRef.current = 0;
+    }, 1000) as unknown as number;
 
     ws.onmessage = (ev) => {
-      // Check if message is a JPEG binary frame
+      // If message is a JPEG binary frame from server
       if (typeof ev.data !== "string") {
+        recvCountRef.current += 1; // count received frames
         const url = URL.createObjectURL(ev.data as Blob);
         const imgEl = serverImgRef.current;
         if (imgEl) {
@@ -256,18 +257,16 @@ export default function SmartAttendanceSystem() {
       try {
         const msg = JSON.parse(ev.data) as PresentEvent | DetsMsg | any;
 
-
         // Handle attendance events
         if (msg.type === "present" || msg.type === "left") {
           const name = (msg as PresentEvent).name || (msg as any).studentId || "Unknown";
-          const confidence = (msg as PresentEvent).conf || 80; // Assuming backend sends as percentage
+          const confidence = (msg as PresentEvent).conf || 80;
 
-          // Skip if student is already present in the session
           const existingRecord = attendanceRecords.find(
             (record) =>
               record.studentId === (msg as PresentEvent).studentId &&
               record.sessionId === currentSessionId &&
-              record.status === 'present'
+              record.status === "present"
           );
 
           if (existingRecord) {
@@ -276,8 +275,12 @@ export default function SmartAttendanceSystem() {
           }
 
           if (msg.type === "present") {
-            const wasAdded = addAttendanceRecord(name, confidence, 'automatic', 'Auto-detected via live recognition');
-            // Only add to present list if attendance record was successfully added (not duplicate)
+            const wasAdded = addAttendanceRecord(
+              name,
+              confidence,
+              "automatic",
+              "Auto-detected via live recognition"
+            );
             if (wasAdded) {
               setPresentList((prev) => {
                 if (prev.some((p) => p.name === name)) return prev;
@@ -301,31 +304,30 @@ export default function SmartAttendanceSystem() {
 
             names.forEach((name) => {
               const detection = (msg as DetsMsg).dets.find((d) => d.name === name);
-              const confidence = detection?.confidence || 80; // Assuming backend sends as percentage
-
-              // Check if the student is already marked as present
-              const wasAdded = addAttendanceRecord(name, confidence, 'automatic', 'Auto-detected via live recognition');
-              if (wasAdded) {
-                newlyAddedNames.push(name);
-              }
+              const confidence = detection?.confidence || 80;
+              const wasAdded = addAttendanceRecord(
+                name,
+                confidence,
+                "automatic",
+                "Auto-detected via live recognition"
+              );
+              if (wasAdded) newlyAddedNames.push(name);
             });
 
-            // Only update present list for newly added students
             if (newlyAddedNames.length > 0) {
               setPresentList((prev) => {
                 const set = new Set(prev.map((p) => p.name));
+                let next = prev.slice();
                 for (const n of newlyAddedNames) {
-                  if (!set.has(n)) {
-                    prev = [...prev, { name: n, since: now }];
-                  }
+                  if (!set.has(n)) next.push({ name: n, since: now });
                 }
-                return prev.slice();
+                return next;
               });
             }
           }
         }
       } catch {
-        // If JSON parsing fails, do nothing
+        // ignore bad JSON
       }
     };
 
@@ -336,14 +338,25 @@ export default function SmartAttendanceSystem() {
       }
       ws.close();
       if (wsRef.current === ws) wsRef.current = null;
+
+      if (recvFpsTimerRef.current != null) {
+        window.clearInterval(recvFpsTimerRef.current);
+        recvFpsTimerRef.current = null;
+      }
+      setRecvFps(0);
     };
-  }, [running, recognitionMode, currentSessionId]);
+  }, [running, recognitionMode, currentSessionId, attendanceRecords]);
 
-
-  // Capture & send frames to backend
+  // Capture & send frames to backend + compute FPS
   useEffect(() => {
-    if (!running || recognitionMode !== 'live') return;
+    if (!running || recognitionMode !== "live") return;
     let timer = 0 as unknown as number;
+
+    // Start a 1s ticker to compute outgoing FPS
+    fpsTimerRef.current = window.setInterval(() => {
+      setFps(frameCountRef.current);
+      frameCountRef.current = 0;
+    }, 1000) as unknown as number;
 
     const tick = () => {
       if (busyRef.current) {
@@ -387,6 +400,9 @@ export default function SmartAttendanceSystem() {
             const seq = seqRef.current++;
             ws.send(JSON.stringify({ type: "frame", seq }));
             ws.send(blob);
+
+            // Count one sent frame (for FPS)
+            frameCountRef.current += 1;
           } catch {
             setErr("Send failed");
           } finally {
@@ -399,7 +415,14 @@ export default function SmartAttendanceSystem() {
     };
 
     tick();
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      if (fpsTimerRef.current != null) {
+        window.clearInterval(fpsTimerRef.current);
+        fpsTimerRef.current = null;
+      }
+      setFps(0);
+    };
   }, [running, recognitionMode]);
 
   const sidebarItems = [
@@ -407,15 +430,13 @@ export default function SmartAttendanceSystem() {
     { id: "sessions", label: "Sessions", icon: Clock, text: "Manage your sesions." },
     { id: "students", label: "Students", icon: User, text: "Manage or add students here." },
     { id: "settings", label: "Settings", icon: SettingsIcon, text: "Modify Settings" },
-
   ];
-  let curText = sidebarItems.find((tab) => tab.id == activeTab);
+  const curText = sidebarItems.find((tab) => tab.id === activeTab);
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
-     
-{/* CDD */}
+      {/* Sidebar (omitted in your snippet) */}
+
       {/* Main Content */}
       <div className="flex-1 overflow-hidden">
         <div className="h-full overflow-y-auto">
@@ -424,24 +445,24 @@ export default function SmartAttendanceSystem() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-gray-800">
-                  {activeTab === "dashboard" ? "Attendance Dashboard" :
-                    activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+                  {activeTab === "dashboard"
+                    ? "Attendance Dashboard"
+                    : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
                 </h2>
-
-                <p className="text-gray-600 mt-1">{curText['text']}</p>
+                <p className="text-gray-600 mt-1">{curText?.text}</p>
               </div>
 
               {activeTab === "dashboard" && !sessionActive && (
                 <div className="flex gap-3">
                   <button
-                    onClick={() => startSession('live')}
+                    onClick={() => startSession("live")}
                     className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
                     <Camera size={18} className="mr-2" />
                     Live Recognition
                   </button>
                   <button
-                    onClick={() => startSession('upload')}
+                    onClick={() => startSession("upload")}
                     className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                   >
                     <Upload size={18} className="mr-2" />
@@ -453,7 +474,7 @@ export default function SmartAttendanceSystem() {
               {activeTab === "sessions" && (
                 <div className="flex gap-3">
                   <button
-                    onClick={() => startSession('live')}
+                    onClick={() => startSession("live")}
                     className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
                     <Plus size={18} className="mr-2" />
@@ -465,7 +486,7 @@ export default function SmartAttendanceSystem() {
               {activeTab === "students" && (
                 <div className="flex gap-3">
                   <button
-                    onClick={() => startSession('live')}
+                    onClick={() => startSession("live")}
                     className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
                     <Plus size={18} className="mr-2" />
@@ -473,8 +494,6 @@ export default function SmartAttendanceSystem() {
                   </button>
                 </div>
               )}
-
-              
             </div>
           </div>
 
@@ -505,40 +524,39 @@ export default function SmartAttendanceSystem() {
                 handleManualEntry={handleManualEntry}
                 updateRecord={updateRecord}
                 setEditingRecord={setEditingRecord}
+                // NEW props for showing FPS under "Mode"
+                fps={fps}
+                recvFps={recvFps} // optional: show server stream rate too
+                setActiveTab={setActiveTab} // if your Live needs to switch tabs
               />
             )}
-            {
-              activeTab == "sessions" && (
-                <Session
-                  attendanceRecords={attendanceRecords}
-                  editingRecord={editingRecord}
-                  updateRecord={updateRecord}
-                  setEditingRecord={setEditingRecord}
-                />
-              )
-            }
 
-            {
-              activeTab == "students" && (
-                <Students
-                  attendanceRecords={attendanceRecords}
-                  editingRecord={editingRecord}
-                  updateRecord={updateRecord}
-                  setEditingRecord={setEditingRecord}
-                />
-              )
-            }
-            {
-              activeTab == "settings" && (
-                <Settings
-                  attendanceRecords={attendanceRecords}
-                  editingRecord={editingRecord}
-                  updateRecord={updateRecord}
-                  setEditingRecord={setEditingRecord}
-                />
-              )
-            }
+            {activeTab === "sessions" && (
+              <Session
+                attendanceRecords={attendanceRecords}
+                editingRecord={editingRecord}
+                updateRecord={updateRecord}
+                setEditingRecord={setEditingRecord}
+              />
+            )}
 
+            {activeTab === "students" && (
+              <Students
+                attendanceRecords={attendanceRecords}
+                editingRecord={editingRecord}
+                updateRecord={updateRecord}
+                setEditingRecord={setEditingRecord}
+              />
+            )}
+
+            {activeTab === "settings" && (
+              <Settings
+                attendanceRecords={attendanceRecords}
+                editingRecord={editingRecord}
+                updateRecord={updateRecord}
+                setEditingRecord={setEditingRecord}
+              />
+            )}
           </div>
         </div>
       </div>

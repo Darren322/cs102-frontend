@@ -4,8 +4,6 @@ import { Play, Square, Edit3, Upload, Check, X } from "lucide-react"
 import type { LiveProps } from "../components/utils/dashboard-types"
 import { useEffect, useState } from "react";
 
-
-
 export function Live({
   sessionActive,
   currentSessionId,
@@ -27,16 +25,21 @@ export function Live({
   handleManualEntry,
   updateRecord,
   setEditingRecord,
+
+  // NEW: incoming FPS values
+  fps,
+  recvFps,
 }: LiveProps) {
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualStudentId, setManualStudentId] = useState("");
   const [manualRemarks, setManualRemarks] = useState("");
   const [localRecords, setLocalRecords] = useState(attendanceRecords);
+
   const updateLocalRecord = (id, field, value) => {
-  setLocalRecords(prev =>
-    prev.map(r => r.id === id ? { ...r, [field]: value } : r)
-  );
-};
+    setLocalRecords(prev =>
+      prev.map(r => (r.id === id ? { ...r, [field]: value } : r))
+    );
+  };
 
   const handleLocalAdd = () => {
     if (!manualStudentId.trim()) return;
@@ -63,14 +66,14 @@ export function Live({
     setManualRemarks("");
     setShowManualEntry(false);
   };
+
   useEffect(() => {
     // Only run this when session goes from active → inactive
     if (!running && sessionActive && currentSessionId) {
-      // Example: automatically mark a student present
       const autoRecord = {
         id: `REC_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
         sessionId: currentSessionId,
-        studentId: "STUDENT_AUTO_01", // <-- you can replace this dynamically
+        studentId: "STUDENT_AUTO_01",
         timestamp: Date.now(),
         confidence: 95,
         markingType: "automatic",
@@ -78,9 +81,10 @@ export function Live({
         remarks: "Auto-marked when recognition stopped",
       };
 
-      setLocalRecords((prev) => [autoRecord, ...prev]);
+      setLocalRecords(prev => [autoRecord, ...prev]);
     }
   }, [running]);
+
   return (
     <div className="space-y-6">
       {sessionActive && (
@@ -90,16 +94,29 @@ export function Live({
               <h3 className="text-lg font-semibold text-gray-800">Active Session</h3>
               <p className="text-gray-600">Session ID: {currentSessionId}</p>
               <p className="text-sm text-gray-500">Mode: {recognitionMode?.toUpperCase()}</p>
+
+              {/* NEW: FPS row */}
+              {recognitionMode === "live" && (
+                <p className="text-sm text-gray-500 mt-1">
+                  FPS: <span className="font-medium">{Math.round(fps ?? 0)}</span>
+                  {typeof recvFps === "number" && (
+                    <span className="ml-2">
+                      • Server FPS: <span className="font-medium">{Math.round(recvFps)}</span>
+                    </span>
+                  )}
+                </p>
+              )}
             </div>
 
             <div className="flex items-center gap-3">
               {recognitionMode === "live" && (
                 <button
                   onClick={() => setRunning(!running)}
-                  className={`flex items-center px-4 py-2 rounded-lg transition-colors ${running
-                    ? "bg-red-600 text-white hover:bg-red-700"
-                    : "bg-green-600 text-white hover:bg-green-700"
-                    }`}
+                  className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
+                    running
+                      ? "bg-red-600 text-white hover:bg-red-700"
+                      : "bg-green-600 text-white hover:bg-green-700"
+                  }`}
                 >
                   {running ? <Square size={18} className="mr-2" /> : <Play size={18} className="mr-2" />}
                   {running ? "Stop Recognition" : "Start Recognition"}
@@ -124,7 +141,9 @@ export function Live({
           </div>
 
           {err && (
-            <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-2 rounded-lg mb-4">{err}</div>
+            <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-2 rounded-lg mb-4">
+              {err}
+            </div>
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -292,12 +311,13 @@ export function Live({
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div
-                          className={`w-2 h-2 rounded-full mr-2 ${record.confidence >= 90
-                            ? "bg-green-500"
-                            : record.confidence >= 70
+                          className={`w-2 h-2 rounded-full mr-2 ${
+                            record.confidence >= 90
+                              ? "bg-green-500"
+                              : record.confidence >= 70
                               ? "bg-yellow-500"
                               : "bg-red-500"
-                            }`}
+                          }`}
                         ></div>
                         {record.confidence.toFixed(1)}%
                       </div>
@@ -314,10 +334,11 @@ export function Live({
                         </select>
                       ) : (
                         <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${record.markingType === "automatic"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-purple-100 text-purple-800"
-                            }`}
+                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            record.markingType === "automatic"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-purple-100 text-purple-800"
+                          }`}
                         >
                           {record.markingType}
                         </span>
@@ -336,12 +357,13 @@ export function Live({
                         </select>
                       ) : (
                         <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${record.status === "present"
-                            ? "bg-green-100 text-green-800"
-                            : record.status === "late"
+                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            record.status === "present"
+                              ? "bg-green-100 text-green-800"
+                              : record.status === "late"
                               ? "bg-yellow-100 text-yellow-800"
                               : "bg-red-100 text-red-800"
-                            }`}
+                          }`}
                         >
                           {record.status}
                         </span>
