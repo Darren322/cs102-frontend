@@ -410,7 +410,7 @@ export default function SmartAttendanceSystem() {
           }
         },
         "image/jpeg",
-        0.5
+        0.85
       );
     };
 
@@ -434,7 +434,7 @@ export default function SmartAttendanceSystem() {
   const curText = sidebarItems.find((tab) => tab.id === activeTab);
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 w-full">
       {/* Sidebar (omitted in your snippet) */}
 
       {/* Main Content */}
