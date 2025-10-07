@@ -7,7 +7,7 @@ const dummyData =[
   {studentName: "Nicholas Soh", studentID:'01455728', studentEmail: 'nicholassoh.2024@computing.smu.edu.sg', studentPhone: '96792445', studentImage: 'https://as2.ftcdn.net/jpg/02/90/27/39/1000_F_290273933_ukYZjDv8nqgpOBcBUo5CQyFcxAzYlZRW.jpg'}
 ]
 
-export function Students({
+export default function Students({
   attendanceRecords,
   editingRecord,
   updateRecord,

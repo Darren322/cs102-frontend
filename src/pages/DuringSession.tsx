@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Camera, Upload, Plus, SettingsIcon, Users, Clock, User } from "lucide-react";
 import { Live } from "../components/dashboard";
 import { Session } from "../components/sessions";
-import { Students } from "../components/students";
+// import { Students } from "../components/students";
 import { Settings } from "../components/settings";
 
 // Types for events and attendance records
@@ -41,6 +41,7 @@ export default function SmartAttendanceSystem() {
   const lastUrlRef = useRef<string | null>(null);
   const seqRef = useRef(1);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
 
   // UI state
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -540,14 +541,14 @@ export default function SmartAttendanceSystem() {
               />
             )}
 
-            {activeTab === "students" && (
+            {/* {activeTab === "students" && (
               <Students
                 attendanceRecords={attendanceRecords}
                 editingRecord={editingRecord}
                 updateRecord={updateRecord}
                 setEditingRecord={setEditingRecord}
               />
-            )}
+            )} */}
 
             {activeTab === "settings" && (
               <Settings
