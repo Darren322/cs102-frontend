@@ -58,7 +58,7 @@ export default function Sidebar({ className }: SidebarProps) {
     <aside
       className={cn(
         "w-64 shrink-0 border-r p-2",
-        "flex h-screen flex-col", // full-height column layout
+        "flex h-auto flex-col", // full-height column layout
         className
       )}
     >

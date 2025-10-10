@@ -4,7 +4,6 @@
 import { Play, Square, Edit3, Upload, Check, X } from "lucide-react"
 import { useEffect, useState } from "react"
 import type { LiveProps } from "../components/utils/dashboard-types"
-import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getAttendanceRecordForSession } from "./api/backend-methods/AttendanceRecord";
 import { stringFormatter } from "./utils/stringFormatter";
@@ -12,7 +11,6 @@ import { stringFormatter } from "./utils/stringFormatter";
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import {
