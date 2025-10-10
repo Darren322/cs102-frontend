@@ -169,8 +169,8 @@ export default function LoginPage() {
         {/* Footer */}
         <p className="mt-6 text-center text-sm text-gray-600">
           Don't have an account?{' '}
-          <a href="#" className="font-medium text-blue-600 hover:text-blue-700">
-            Contact Administrator
+          <a href="/register" className="font-medium text-blue-600 hover:text-blue-700">
+            Click here to register
           </a>
         </p>
       </div>
