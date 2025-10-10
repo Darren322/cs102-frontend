@@ -24,3 +24,17 @@ export function closeCourse(sessionID : string){
     }
     return Promise.reject("Unable to hit endpoint")
 }
+
+export function getCurrentSession(sessionId: any){
+    const response = api.get(url + `/${sessionId}`)
+    return response;
+}
+
+export function getActiveByCreator(){
+    if(localStorage['username'] !== undefined){
+        const currentMail = localStorage['username']
+        const response = api.get(url + `/creator/${currentMail}/active`);
+        return response;
+    }
+    return Promise.reject("Unable to hit endpoint.")
+}

@@ -27,7 +27,7 @@ function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/rosters" element={<RostersPage />} />
           <Route path="/import" element={<Import />} />
-          <Route path="/session_start" element={<LiveCam />} />
+          <Route path="/session_start/:id" element={<LiveCam />} />
           <Route path="/students" element={<Students />} />
           <Route path="/attendancedetails/:id" element={<AttendanceDetails />} />
           <Route path="/sessions" element={<SessionsPage />} />

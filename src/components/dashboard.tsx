@@ -3,6 +3,9 @@
 import { Play, Square, Edit3, Upload, Check, X } from "lucide-react"
 import type { LiveProps } from "../components/utils/dashboard-types"
 import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { getAttendanceRecordForSession } from "./api/backend-methods/AttendanceRecord";
+import { stringFormatter } from "./utils/stringFormatter";
 
 export function Live({
   sessionActive,
@@ -84,6 +87,18 @@ export function Live({
       setLocalRecords(prev => [autoRecord, ...prev]);
     }
   }, [running]);
+  const p = useParams().id;
+  const [currentAttendanceRecords, setCurrentAttendanceRecords] = useState<any>([]);
+  useEffect(() => {
+    getAttendanceRecordForSession(p).then((res) => {
+      setCurrentAttendanceRecords(res.data);
+      console.log('Success')
+    }).catch((error) => {
+      console.error(error);
+    })
+  }, [p])
+
+
 
   return (
     <div className="space-y-6">
@@ -112,11 +127,10 @@ export function Live({
               {recognitionMode === "live" && (
                 <button
                   onClick={() => setRunning(!running)}
-                  className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
-                    running
-                      ? "bg-red-600 text-white hover:bg-red-700"
-                      : "bg-green-600 text-white hover:bg-green-700"
-                  }`}
+                  className={`flex items-center px-4 py-2 rounded-lg transition-colors ${running
+                    ? "bg-red-600 text-white hover:bg-red-700"
+                    : "bg-green-600 text-white hover:bg-green-700"
+                    }`}
                 >
                   {running ? <Square size={18} className="mr-2" /> : <Play size={18} className="mr-2" />}
                   {running ? "Stop Recognition" : "Start Recognition"}
@@ -252,7 +266,7 @@ export function Live({
           )}
         </div>
       )}
-
+      {/* Table dashboard here. */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="px-6 p-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-800">Attendance Records</h3>
@@ -290,110 +304,114 @@ export function Live({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {localRecords.length === 0 ? (
+              {currentAttendanceRecords.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
                     No attendance records yet. Start a session to begin tracking attendance.
                   </td>
                 </tr>
               ) : (
-                localRecords.map((record) => (
-                  <tr key={record.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {record.sessionId.split("_")[1]}...
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {record.studentId}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(record.timestamp).toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div
-                          className={`w-2 h-2 rounded-full mr-2 ${
-                            record.confidence >= 90
-                              ? "bg-green-500"
-                              : record.confidence >= 70
-                              ? "bg-yellow-500"
-                              : "bg-red-500"
-                          }`}
-                        ></div>
-                        {record.confidence.toFixed(1)}%
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {editingRecord === record.id ? (
-                        <select
-                          value={record.markingType}
-                          onChange={(e) => updateLocalRecord(record.id, "markingType", e.target.value)}
-                          className="text-xs border rounded px-2 py-1"
-                        >
-                          <option value="automatic">Automatic</option>
-                          <option value="manual">Manual</option>
-                        </select>
-                      ) : (
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            record.markingType === "automatic"
+                currentAttendanceRecords.map((record: any) => {
+                  console.log(record)
+                  return (
+
+                    <tr key={record.studentId} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {p}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {record.studentId}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {new Date(record.timestamp).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <span
+                            className={`px-2 py-1 rounded-full text-white text-xs font-medium ${record.confidenceThreshold >= 0.9
+                                ? "bg-green-500"
+                                : record.confidenceThreshold >= 0.7
+                                  ? "bg-yellow-500"
+                                  : "bg-red-500"
+                              }`}
+                          >
+                            {record.confidenceThreshold.toFixed(2)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {editingRecord === record.id ? (
+                          <select
+                            value={record.markingType}
+                            onChange={(e) => updateLocalRecord(record.id, "markingType", e.target.value)}
+                            className="text-xs border rounded px-2 py-1"
+                          >
+                            <option value="automatic">Automatic</option>
+                            <option value="manual">Manual</option>
+                          </select>
+                        ) : (
+                          <span
+                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${record.markingType === "automatic"
                               ? "bg-blue-100 text-blue-800"
                               : "bg-purple-100 text-purple-800"
-                          }`}
-                        >
-                          {record.markingType}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {editingRecord === record.id ? (
-                        <select
-                          value={record.status}
-                          onChange={(e) => updateLocalRecord(record.id, "status", e.target.value)}
-                          className="text-xs border rounded px-2 py-1"
-                        >
-                          <option value="present">Present</option>
-                          <option value="absent">Absent</option>
-                          <option value="late">Late</option>
-                        </select>
-                      ) : (
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            record.status === "present"
+                              }`}
+                          >
+                            {stringFormatter(record.method)}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {editingRecord === record.id ? (
+                          <select
+                            value={record.status}
+                            onChange={(e) => updateLocalRecord(record.id, "status", e.target.value)}
+                            className="text-xs border rounded px-2 py-1"
+                          >
+                            <option value="present">Present</option>
+                            <option value="absent">Absent</option>
+                            <option value="late">Late</option>
+                          </select>
+                        ) : (
+                          <span
+                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${record.status === "present"
                               ? "bg-green-100 text-green-800"
                               : record.status === "late"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-red-100 text-red-800"
+                              }`}
+                          >
+                            {stringFormatter(record.status)}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {editingRecord === record.id ? (
+                          <input
+                            type="text"
+                            value={record.remarks}
+                            onChange={(e) => updateLocalRecord(record.id, "remarks", e.target.value)}
+                            className="text-xs border rounded px-2 py-1 w-full"
+                            placeholder="Add remarks..."
+                          />
+                        ) : (
+                          record.remarks || "-"
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button
+                          onClick={() =>
+                            setEditingRecord(editingRecord === record.id ? null : record.id)
+                          }
+                          className="text-blue-600 hover:text-blue-900 mr-3"
                         >
-                          {record.status}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {editingRecord === record.id ? (
-                        <input
-                          type="text"
-                          value={record.remarks}
-                          onChange={(e) => updateLocalRecord(record.id, "remarks", e.target.value)}
-                          className="text-xs border rounded px-2 py-1 w-full"
-                          placeholder="Add remarks..."
-                        />
-                      ) : (
-                        record.remarks || "-"
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() =>
-                          setEditingRecord(editingRecord === record.id ? null : record.id)
-                        }
-                        className="text-blue-600 hover:text-blue-900 mr-3"
-                      >
-                        {editingRecord === record.id ? "Save" : "Edit"}
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                          {editingRecord === record.id ? "Save" : "Edit"}
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                }
+
+                )
               )}
             </tbody>
           </table>

@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Camera, Upload, Plus, SettingsIcon, Users, Clock, User } from "lucide-react";
 import { Live } from "../components/dashboard";
 import { Session } from "../components/sessions";
-// import { Students } from "../components/students";
 import { Settings } from "../components/settings";
 
 // Types for events and attendance records
@@ -433,7 +432,7 @@ export default function SmartAttendanceSystem() {
     { id: "settings", label: "Settings", icon: SettingsIcon, text: "Modify Settings" },
   ];
   const curText = sidebarItems.find((tab) => tab.id === activeTab);
-
+  console.log(activeTab)
   return (
     <div className="flex h-screen bg-gray-50 w-full">
       {/* Sidebar (omitted in your snippet) */}

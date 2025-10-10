@@ -293,7 +293,7 @@ export default function SessionsPage() {
                                   Close Session
                                 </button>
                                 <button
-                                  onClick={() => navigate(`/session_start`)}
+                                  onClick={() => navigate(`/session_start/${session.sessionID}`)}
                                   className="px-3 py-2 bg-green-50 text-green-600 text-sm rounded-lg hover:bg-green-100 transition-colors"
                                 >
                                   Take Attendance
