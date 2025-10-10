@@ -37,7 +37,7 @@ export default function LoginPage() {
 
       // store token if backend returns one (JWT or custom)
       if (data.token) {
-        const storage = remember ? localStorage : sessionStorage;
+        const storage = localStorage;
         storage.setItem('token', data.token);
         storage.setItem('username', data.username ?? email);
         storage.setItem('role', data.role ?? '');

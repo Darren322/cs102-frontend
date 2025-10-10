@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { Users, Plus, Search, Eye, Edit, Trash2, Download, Upload, X, UserPlus } from "lucide-react";
-import Sidebar from "../components/Sidebar"
+// import { getAttendanceRecord } from "../components/api/backend-methods/AttendanceRecord";
+// import { getAllSessions } from "../components/api/backend-methods/Sessions";
+import { Link } from "react-router-dom";
 
+//This page can be AttendanceRecord, where it can show information about each Session.
+//Users can view information of the Attendance records, post lesson.
 type Student = {
   id: string;
   name: string;
@@ -37,9 +41,10 @@ export default function RostersPage() {
 
   // Initialize mock data
   useEffect(() => {
+
     const mockRosters: Roster[] = [
       {
-        id: "roster_1",
+        id: "S001",
         name: "Computer Science 101 - Morning Section",
         course: "Introduction to Computer Science",
         courseCode: "CS101",
@@ -91,7 +96,7 @@ export default function RostersPage() {
         ]
       },
       {
-        id: "roster_2",
+        id: "S002",
         name: "Data Structures & Algorithms",
         course: "Advanced Programming Concepts",
         courseCode: "CS201",
@@ -127,7 +132,7 @@ export default function RostersPage() {
         ]
       },
       {
-        id: "roster_3",
+        id: "S003",
         name: "Machine Learning Fundamentals",
         course: "Artificial Intelligence and ML",
         courseCode: "CS301",
@@ -213,19 +218,19 @@ export default function RostersPage() {
   );
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      
-      
+    <div className="flex h-screen bg-gray-50 w-full">
+
+
       <div className="flex-1 overflow-hidden">
         <div className="h-full overflow-y-auto">
           {/* Header */}
-          <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="bg-white border-b border-gray-200 px-6 py-5">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-gray-800">Course Rosters</h1>
-                <p className="text-gray-600 mt-1">Manage student rosters for different courses and sections</p>
+                <h1 className="text-2xl font-bold text-gray-800">Attendance Records for Past Sessions</h1>
+                <p className="text-gray-600 mt-1">Manage attendance records for different courses and sections you took previously.</p>
               </div>
-              
+
               <div className="flex gap-3">
                 <button className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
                   <Upload size={18} className="mr-2" />
@@ -259,61 +264,68 @@ export default function RostersPage() {
 
             {/* Rosters Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredRosters.map((roster) => (
-                <div key={roster.id} className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                  <div className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-1">{roster.name}</h3>
-                        <p className="text-sm text-gray-600">{roster.course}</p>
-                        <p className="text-xs text-gray-500">{roster.courseCode} - {roster.semester}</p>
+              {filteredRosters.map((roster) => {
+                console.log(roster.id)
+                return (
+                  <Link to={`/attendancedetails/${roster.id}`}>
+                    <div key={roster.id} className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                      <div className="p-6">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-gray-800 mb-1">{roster.name}</h3>
+                            <p className="text-sm text-gray-600">{roster.course}</p>
+                            <p className="text-xs text-gray-500">{roster.courseCode} - {roster.semester}</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 mb-4">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Students:</span>
+                            <span className="text-gray-900">{roster.students.length}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Active:</span>
+                            <span className="text-gray-900">{roster.students.filter(s => s.status === 'active').length}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Created:</span>
+                            <span className="text-gray-900">{new Date(roster.createdAt).toLocaleDateString()}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Modified:</span>
+                            <span className="text-gray-900">{new Date(roster.lastModified).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setViewingRoster(roster)}
+                            className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-50 text-blue-700 text-sm rounded-lg hover:bg-blue-100 transition-colors"
+                          >
+                            <Eye size={16} className="mr-1" />
+                            View
+                          </button>
+                          <button
+                            onClick={() => exportRoster(roster)}
+                            className="flex-1 flex items-center justify-center px-3 py-2 bg-green-50 text-green-700 text-sm rounded-lg hover:bg-green-100 transition-colors"
+                          >
+                            <Download size={16} className="mr-1" />
+                            Export
+                          </button>
+                          <button
+                            onClick={() => deleteRoster(roster.id)}
+                            className="px-3 py-2 bg-red-50 text-red-600 text-sm rounded-lg hover:bg-red-100 transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    
-                    <div className="space-y-2 mb-4">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Students:</span>
-                        <span className="text-gray-900">{roster.students.length}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Active:</span>
-                        <span className="text-gray-900">{roster.students.filter(s => s.status === 'active').length}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Created:</span>
-                        <span className="text-gray-900">{new Date(roster.createdAt).toLocaleDateString()}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Modified:</span>
-                        <span className="text-gray-900">{new Date(roster.lastModified).toLocaleDateString()}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setViewingRoster(roster)}
-                        className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-50 text-blue-700 text-sm rounded-lg hover:bg-blue-100 transition-colors"
-                      >
-                        <Eye size={16} className="mr-1" />
-                        View
-                      </button>
-                      <button
-                        onClick={() => exportRoster(roster)}
-                        className="flex-1 flex items-center justify-center px-3 py-2 bg-green-50 text-green-700 text-sm rounded-lg hover:bg-green-100 transition-colors"
-                      >
-                        <Download size={16} className="mr-1" />
-                        Export
-                      </button>
-                      <button
-                        onClick={() => deleteRoster(roster.id)}
-                        className="px-3 py-2 bg-red-50 text-red-600 text-sm rounded-lg hover:bg-red-100 transition-colors"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                  </Link>
+                )
+
+
+              })}
             </div>
 
             {filteredRosters.length === 0 && (
@@ -321,7 +333,7 @@ export default function RostersPage() {
                 <Users size={48} className="mx-auto text-gray-400 mb-4" />
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">No rosters found</h3>
                 <p className="text-gray-600 mb-4">
-                  {searchTerm 
+                  {searchTerm
                     ? 'Try adjusting your search criteria'
                     : 'Create your first course roster to get started'
                   }
@@ -354,7 +366,7 @@ export default function RostersPage() {
                   <X size={20} />
                 </button>
               </div>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -368,7 +380,7 @@ export default function RostersPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Course Name
@@ -411,7 +423,7 @@ export default function RostersPage() {
                   </select>
                 </div>
               </div>
-              
+
               <div className="flex justify-end gap-3 mt-6">
                 <button
                   onClick={() => setShowCreateRoster(false)}
@@ -450,7 +462,7 @@ export default function RostersPage() {
                 </button>
               </div>
             </div>
-            
+
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
               <div className="mb-4 flex justify-between items-center">
                 <h4 className="font-medium text-gray-800">Students ({viewingRoster.students.length})</h4>
@@ -459,7 +471,7 @@ export default function RostersPage() {
                   Add Student
                 </button>
               </div>
-              
+
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50">
@@ -480,11 +492,10 @@ export default function RostersPage() {
                         <td className="px-4 py-2 text-sm text-gray-600">{student.email}</td>
                         <td className="px-4 py-2 text-sm text-gray-600">{student.enrollmentDate}</td>
                         <td className="px-4 py-2">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            student.status === 'active' 
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}>
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${student.status === 'active'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                            }`}>
                             {student.status}
                           </span>
                         </td>

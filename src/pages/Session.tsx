@@ -1,7 +1,19 @@
 import { useState, useEffect } from "react";
 import { Camera, Upload, Plus, Calendar, Search, Filter, Eye, Trash2, MoreHorizontal, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { activateCourse, closeCourse, getSessionByCreator } from "../components/api/backend-methods/Sessions";
+import { formatTime, stringFormatter } from "../components/utils/stringFormatter";
 
+//This page should show the Sessions the prof has created.
+//1 Class is 1 Session. CS102 has 1 Session.
+
+//Suitable endpoint to call here:
+//Get all By creator. 
+//Allow Creator to filter by Active/Etc.
+
+//Allow user to click on button for CREATED ones. If created, then it will show set Active or something.
+//If active, allows them to do recogntion (show two buttons) (sessionId/activate)
+//If closed, when click on card, just go to next page. (sessionId/close)
 
 // Types for sessions and rosters
 type Roster = {
@@ -35,8 +47,9 @@ type SessionRecord = {
 };
 
 export default function SessionsPage() {
+  console.log(localStorage)
   const navigate = useNavigate();
-  
+
   // State management
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [rosters, setRosters] = useState<Roster[]>([]);
@@ -48,99 +61,16 @@ export default function SessionsPage() {
 
   // Initialize mock data
   useEffect(() => {
-    // Mock rosters
-    const mockRosters: Roster[] = [
-      {
-        id: "roster_1",
-        name: "Computer Science 101",
-        course: "CS101",
-        semester: "Fall 2024",
-        students: [
-          { id: "1", name: "John Doe", email: "john@example.com", studentId: "STUDENT_001" },
-          { id: "2", name: "Jane Smith", email: "jane@example.com", studentId: "STUDENT_002" },
-          { id: "3", name: "Bob Johnson", email: "bob@example.com", studentId: "STUDENT_003" },
-          { id: "4", name: "Alice Brown", email: "alice@example.com", studentId: "STUDENT_004" },
-          { id: "5", name: "Charlie Wilson", email: "charlie@example.com", studentId: "STUDENT_005" },
-        ],
-        createdAt: Date.now() - 86400000
-      },
-      {
-        id: "roster_2", 
-        name: "Data Structures & Algorithms",
-        course: "CS201",
-        semester: "Fall 2024",
-        students: [
-          { id: "6", name: "David Lee", email: "david@example.com", studentId: "STUDENT_006" },
-          { id: "7", name: "Emma Davis", email: "emma@example.com", studentId: "STUDENT_007" },
-          { id: "8", name: "Frank Miller", email: "frank@example.com", studentId: "STUDENT_008" },
-        ],
-        createdAt: Date.now() - 172800000
-      },
-      {
-        id: "roster_3",
-        name: "Machine Learning Fundamentals", 
-        course: "CS301",
-        semester: "Fall 2024",
-        students: [
-          { id: "9", name: "Grace Chen", email: "grace@example.com", studentId: "STUDENT_009" },
-          { id: "10", name: "Henry Taylor", email: "henry@example.com", studentId: "STUDENT_010" },
-        ],
-        createdAt: Date.now() - 259200000
-      }
-    ];
 
-    // Mock existing sessions
-    const mockSessions: SessionRecord[] = [
-      {
-        id: "session_1",
-        name: "CS101 - Introduction to Programming",
-        rosterId: "roster_1",
-        rosterName: "Computer Science 101",
-        course: "CS101",
-        createdAt: Date.now() - 3600000,
-        status: 'completed',
-        attendanceCount: 4,
-        totalStudents: 5,
-        duration: 3600,
-        recognitionMode: 'live'
-      },
-      {
-        id: "session_2", 
-        name: "CS201 - Lab Session Week 3",
-        rosterId: "roster_2",
-        rosterName: "Data Structures & Algorithms", 
-        course: "CS201",
-        createdAt: Date.now() - 1800000,
-        status: 'draft',
-        attendanceCount: 0,
-        totalStudents: 3
-      },
-      {
-        id: "session_3",
-        name: "CS301 - Neural Networks Lecture",
-        rosterId: "roster_3", 
-        rosterName: "Machine Learning Fundamentals",
-        course: "CS301",
-        createdAt: Date.now() - 7200000,
-        status: 'completed',
-        attendanceCount: 2,
-        totalStudents: 2,
-        duration: 5400,
-        recognitionMode: 'upload'
-      }
-    ];
-
-    setRosters(mockRosters);
-    setSessions(mockSessions);
   }, []);
 
   // Create new session
   const handleCreateSession = () => {
     if (!selectedRoster || !sessionName.trim()) return;
-    
+
     const roster = rosters.find(r => r.id === selectedRoster);
     if (!roster) return;
-    
+
     const newSession: SessionRecord = {
       id: `session_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
       name: sessionName.trim(),
@@ -152,7 +82,7 @@ export default function SessionsPage() {
       attendanceCount: 0,
       totalStudents: roster.students.length
     };
-    
+
     setSessions(prev => [newSession, ...prev]);
     setShowCreateSession(false);
     setSelectedRoster("");
@@ -163,21 +93,21 @@ export default function SessionsPage() {
   const startSession = (sessionId: string, mode: 'live' | 'upload') => {
     const session = sessions.find(s => s.id === sessionId);
     if (!session) return;
-    
+
     const roster = rosters.find(r => r.id === session.rosterId);
-    
+
     // Update session status to active
-    setSessions(prev => 
-      prev.map(s => 
-        s.id === sessionId 
+    setSessions(prev =>
+      prev.map(s =>
+        s.id === sessionId
           ? { ...s, status: 'active' as const, recognitionMode: mode }
           : s
       )
     );
-    
+
     // Navigate to SmartAttendanceSystem with session context
-    navigate('/session_start', { 
-      state: { 
+    navigate('/session_start', {
+      state: {
         sessionId,
         sessionName: session.name,
         course: session.course,
@@ -185,45 +115,64 @@ export default function SessionsPage() {
         rosterName: session.rosterName,
         recognitionMode: mode,
         students: roster?.students || []
-      } 
+      }
     });
   };
 
-  // Delete session
-  const deleteSession = (sessionId: string) => {
-    if (window.confirm('Are you sure you want to delete this session? This action cannot be undone.')) {
-      setSessions(prev => prev.filter(s => s.id !== sessionId));
-    }
-  };
+  const [sessionsByUser, setSessionByUser] = useState();
+  useEffect(() => {
+    getSessionByCreator().then((response) => {
+      console.log(response)
+      setSessionByUser(response.data);
+    }).catch((error) => {
+      console.error(error)
+    })
+  }, [localStorage['username']])
 
-  // View session results
-  const viewSessionResults = (sessionId: string) => {
-    navigate(`/session-results/${sessionId}`);
-  };
+  const activateSession = (sessionId: string) => {
+    activateCourse(sessionId).then((response) => {
+      console.log(response)
+      getSessionByCreator().then((r) => {
+        setSessionByUser(r.data)
+      }).catch((e) => {
+        console.log('unable to fetch new ones.')
+      })
 
-  // Filter sessions
-  const filteredSessions = sessions.filter(session => {
-    const matchesSearch = session.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         session.course.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         session.rosterName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || session.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+      console.log('success')
+    }).catch((error) => {
+      console.log(error)
+    })
+  }
+  const closeSession = (sessionId: string) => {
+    closeCourse(sessionId).then((response) => {
+      console.log(response)
+      getSessionByCreator().then((r) => {
+        setSessionByUser(r.data)
+      }).catch((e) => {
+        console.log('unable to fetch new ones.')
+      })
+      console.log('success')
+    }).catch((error) => {
+      console.log(error)
+    })
+  }
 
+
+  console.log(sessionsByUser)
   return (
-    <div className="flex h-screen bg-gray-50">
-      
-      
+    <div className="flex h-screen bg-gray-50 w-full">
+
+
       <div className="flex-1 overflow-hidden">
         <div className="h-full overflow-y-auto">
           {/* Header */}
-          <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="bg-white border-b border-gray-200 px-6 py-5">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-bold text-gray-800">Attendance Sessions</h1>
-                <p className="text-gray-600 mt-1">Create and manage attendance sessions based on course rosters</p>
+                <p className="text-gray-600 mt-1">Create and manage attendance sessions based on your sessions.</p>
               </div>
-              
+
               <button
                 onClick={() => setShowCreateSession(true)}
                 className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -258,9 +207,9 @@ export default function SessionsPage() {
                     className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="all">All Status</option>
-                    <option value="draft">Draft</option>
+                    <option value="draft">Created</option>
                     <option value="active">Active</option>
-                    <option value="completed">Completed</option>
+                    <option value="completed">Closed</option>
                   </select>
                 </div>
               </div>
@@ -268,112 +217,114 @@ export default function SessionsPage() {
 
             {/* Sessions Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredSessions.map((session) => (
-                <div key={session.id} className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                  <div className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-1">{session.name}</h3>
-                        <p className="text-sm text-gray-600">{session.rosterName}</p>
-                        <p className="text-xs text-gray-500">{session.course}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          session.status === 'active' ? 'bg-green-100 text-green-800' :
-                          session.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {session.status}
-                        </span>
-                        <button className="text-gray-400 hover:text-gray-600">
-                          <MoreHorizontal size={16} />
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2 mb-4">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Created:</span>
-                        <span className="text-gray-900">{new Date(session.createdAt).toLocaleDateString()}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Attendance:</span>
-                        <span className="text-gray-900">{session.attendanceCount}/{session.totalStudents}</span>
-                      </div>
-                      {session.duration && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Duration:</span>
-                          <span className="text-gray-900">{Math.round(session.duration / 60)} min</span>
+              {sessionsByUser?.map((session) => {
+                console.log(session)
+
+
+                return (
+                  //this area will be our mappings (result from bern side.)
+                  <div key={session.sessionID} className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                    <div className="p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-gray-800 mb-1">{session.course.courseName}</h3>
+                          <p className="text-sm text-gray-500">{session.course?.courseCode}</p>
+
                         </div>
-                      )}
-                      {session.recognitionMode && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Mode:</span>
-                          <span className="text-gray-900 capitalize">{session.recognitionMode}</span>
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full 
+                          ${session.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
+
+                              session.status === 'CLOSED' ? 'bg-red-100 text-red-800' :
+                                'bg-gray-100 text-gray-800'
+                            }`}>
+                            {stringFormatter(session.status)}
+                          </span>
                         </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      {session.status === 'draft' && (
-                        <>
-                          <button
-                            onClick={() => startSession(session.id, 'live')}
-                            className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
-                          >
-                            <Camera size={16} className="mr-1" />
-                            Live
-                          </button>
-                          <button
-                            onClick={() => startSession(session.id, 'upload')}
-                            className="flex-1 flex items-center justify-center px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
-                          >
-                            <Upload size={16} className="mr-1" />
-                            Upload
-                          </button>
-                        </>
-                      )}
-                      {session.status === 'completed' && (
-                        <button 
-                          onClick={() => viewSessionResults(session.id)}
-                          className="flex-1 flex items-center justify-center px-3 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors"
-                        >
-                          <Eye size={16} className="mr-1" />
-                          View Results
-                        </button>
-                      )}
-                      <button
-                        onClick={() => deleteSession(session.id)}
-                        className="px-3 py-2 bg-red-50 text-red-600 text-sm rounded-lg hover:bg-red-100 transition-colors"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      </div>
+
+                      <div className="space-y-2 mb-4">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Date of Session:</span>
+                          <span className="text-gray-900">{new Date(session.date).toLocaleDateString()}</span>
+                        </div>
+
+
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Start Time:</span>
+                          <span className="text-gray-900">{formatTime(session.startTime)}</span>
+                        </div>
+
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">End Time:</span>
+                          <span className="text-gray-900">{formatTime(session.endTime)}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 justify-end">
+                        {session.status === 'draft' && (
+                          <>
+                            <button
+                              onClick={() => startSession(session.id, 'live')}
+                              className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                              <Camera size={16} className="mr-1" />
+                              Live
+                            </button>
+                            <button
+                              onClick={() => startSession(session.id, 'upload')}
+                              className="flex-1 flex items-center justify-center px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
+                            >
+                              <Upload size={16} className="mr-1" />
+                              Upload
+                            </button>
+                          </>
+                        )}
+
+                        <div>
+                          {
+                            session.active && (
+                              <div className="grid grid-cols-2 gap-x-4">
+
+                                <button
+                                  onClick={() => closeSession(session.sessionID)}
+                                  className="px-3 py-2 bg-red-50 text-red-600 text-sm rounded-lg hover:bg-red-100 transition-colors"
+                                >
+                                  Close Session
+                                </button>
+                                <button
+                                  onClick={() => navigate(`/session_start`)}
+                                  className="px-3 py-2 bg-green-50 text-green-600 text-sm rounded-lg hover:bg-green-100 transition-colors"
+                                >
+                                  Take Attendance
+                                </button>
+                              </div>
+
+
+
+                            )
+                          }
+                          {
+                            !session.active && (
+                              <button
+                                onClick={() => activateSession(session.sessionID)}
+                                className="px-3 py-2 bg-green-50 text-green-600 text-sm rounded-lg hover:bg-green-100 transition-colors"
+                              >
+                                Set Active
+                              </button>
+                            )
+                          }
+                        </div>
+
+
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              }
+              )}
             </div>
 
-            {filteredSessions.length === 0 && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-                <Calendar size={48} className="mx-auto text-gray-400 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">No sessions found</h3>
-                <p className="text-gray-600 mb-4">
-                  {searchTerm || statusFilter !== 'all'
-                    ? 'Try adjusting your search or filter criteria'
-                    : 'Create your first attendance session to get started'
-                  }
-                </p>
-                {!searchTerm && statusFilter === 'all' && (
-                  <button
-                    onClick={() => setShowCreateSession(true)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Create Session
-                  </button>
-                )}
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -392,7 +343,7 @@ export default function SessionsPage() {
                   <X size={20} />
                 </button>
               </div>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -406,7 +357,7 @@ export default function SessionsPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Course Roster
@@ -438,7 +389,7 @@ export default function SessionsPage() {
                   </div>
                 )}
               </div>
-              
+
               <div className="flex justify-end gap-3 mt-6">
                 <button
                   onClick={() => setShowCreateSession(false)}

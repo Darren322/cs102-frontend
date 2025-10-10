@@ -9,6 +9,7 @@ import DashboardPage from "./pages/Dashboard";
 import RostersPage from "./pages/Roster";
 import Students from "./components/students";
 import { ProtectedRoute, PublicOnlyRoute } from "./components/routing";
+import AttendanceDetails from "./pages/AttendanceDetails";
 
 function App() {
   
@@ -28,6 +29,7 @@ function App() {
           <Route path="/import" element={<Import />} />
           <Route path="/session_start" element={<LiveCam />} />
           <Route path="/students" element={<Students />} />
+           <Route path="/attendancedetails/:id" element={<AttendanceDetails />} />
           <Route path="/sessions" element={<SessionsPage />} />
         </Route>
 

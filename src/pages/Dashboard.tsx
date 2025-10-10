@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Users, Clock, TrendingUp, Calendar, Activity, Book, CheckCircle, AlertCircle } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 
+//Might have some form of overall summary here.
+
 export default function DashboardPage() {
   const [stats, setStats] = useState({
     totalSessions: 0,
@@ -80,13 +82,13 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 w-full">
       
       
       <div className="flex-1 overflow-hidden">
         <div className="h-full overflow-y-auto">
           {/* Header */}
-          <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="bg-white border-b border-gray-200 px-6 py-5">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
