@@ -2,17 +2,21 @@
 import { Users, Clock, Settings, FileText, User, BarChart3, LogOut, Home } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { getUser, logout } from "./utils/auth";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface SidebarProps {
   className?: string;
 }
 
-export default function Sidebar({ className = "" }: SidebarProps) {
+export default function Sidebar({ className }: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Always read fresh values from storage/JWT each render
-  const jwt = getUser(); // { sub, role, exp, ... } if you added claims
+  // fresh user values
+  const jwt = getUser();
   const storedUsername =
     sessionStorage.getItem("username") || localStorage.getItem("username") || "";
   const storedEmail =
@@ -33,6 +37,8 @@ export default function Sidebar({ className = "" }: SidebarProps) {
     { id: "sessions",  label: "Sessions",  icon: Clock, path: "/sessions" },
     { id: "rosters",   label: "Rosters",   icon: Users, path: "/rosters" },
     { id: "students",  label: "Students",  icon: User, path: "/students" },
+    { id: "reports",   label: "Reports",   icon: BarChart3, path: "/reports" },
+    { id: "notes",     label: "Notes",     icon: FileText, path: "/notes" },
     { id: "settings",  label: "Settings",  icon: Settings, path: "/settings" },
   ] as const;
 
@@ -40,8 +46,7 @@ export default function Sidebar({ className = "" }: SidebarProps) {
     location.pathname === targetPath || location.pathname.startsWith(targetPath + "/");
 
   const handleLogout = () => {
-    logout(); // clears token from both session/local (per your auth.ts)
-    // clear any profile fields you stored
+    logout();
     ["username", "email", "role"].forEach((k) => {
       sessionStorage.removeItem(k);
       localStorage.removeItem(k);
@@ -50,50 +55,68 @@ export default function Sidebar({ className = "" }: SidebarProps) {
   };
 
   return (
-    <div className={`w-64 bg-white shadow-lg border-r border-gray-200 ${className}`}>
-      {/* User Profile & Logout */}
-      <div className="border-b border-gray-200 p-4 py-6">
-        <div className="flex items-center space-x-3 mb-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-            <span className="text-white text-sm font-medium">{initials}</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-md font-medium text-gray-900 truncate">{name}</p>
-            <p className="text-xs text-gray-500 truncate">{email}</p>
+    <aside
+      className={cn(
+        "w-64 shrink-0 border-r p-2",
+        "flex h-screen flex-col", // full-height column layout
+        className
+      )}
+    >
+      {/* Header / Profile */}
+      <div className="p-4">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-9 w-9">
+            <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{name}</p>
+            <p className="truncate text-xs text-muted-foreground">{email}</p>
           </div>
         </div>
       </div>
 
-      <nav className="mt-6 flex-1">
+      <Separator className="bg-sidebar-border" />
+
+      {/* Nav */}
+      <nav className="flex-1 py-2">
         {sidebarItems.map((item) => {
           const Icon = item.icon;
           const active = isActivePath(item.path);
           return (
-            <button
+            <Button
               key={item.id}
-              onClick={() => navigate(item.path)}
-              className={`w-full flex items-center px-6 py-3 text-left transition-colors ${
+              variant="ghost"
+              className={cn(
+                "w-full justify-start gap-3 rounded-none px-6 py-6",
+                "text-sm font-normal",
                 active
-                  ? "bg-blue-50 text-blue-700 border-r-2 border-blue-700"
-                  : "text-gray-700 hover:bg-gray-50"
-              }`}
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground border-r-2 border-sidebar-ring"
+                  : "text-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              )}
+              onClick={() => navigate(item.path)}
             >
-              <Icon size={20} className="mr-3" />
-              {item.label}
-            </button>
+              <Icon size={18} className="shrink-0" />
+              <span className="truncate">{item.label}</span>
+            </Button>
           );
         })}
       </nav>
-      <div className="border-b border-gray-200 p-4">
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
-        >
-          <LogOut size={16} className="mr-2" />
-          Sign Out
-        </button>
-      </div>
 
-    </div>
+      <Separator className="bg-sidebar-border" />
+
+      {/* Footer / Logout */}
+      <div className="p-4">
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-2"
+          onClick={handleLogout}
+        >
+          <LogOut size={16} />
+          <span>Sign Out</span>
+        </Button>
+      </div>
+    </aside>
   );
 }
