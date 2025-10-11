@@ -154,11 +154,26 @@ export function Live({
         console.error("Record not found for update");
         return;
       }
-      updateSingle(sessionId, studentId, "").then((response) => {
+      const payload = {
+        status: recordToUpdate.status?.toUpperCase() || "PENDING",
+        method: recordToUpdate.method?.toUpperCase() || "MANUAL",
+        optionalNotes: recordToUpdate.optionalNotes || "",
+        recordedBy: localStorage.getItem("username") || "unknown",
+      };
+      updateSingle(sessionId, studentId, payload).then((response) => {
         setEditingRows((prev) => ({
           ...prev,
           [recordToUpdate.attendanceId]: false,
         }));
+
+        setCurrentAttendanceRecords((prev) =>
+          prev.map((r) =>
+            r.attendanceId === recordToUpdate.attendanceId
+              ? { ...r, ...payload }
+              : r
+          )
+        );
+
         console.log(response)
       }).catch((error) => {
         console.error(error)
@@ -461,7 +476,7 @@ export function Live({
                               variant="outline"
                               className={cn(
                                 "capitalize rounded-full px-3 py-1 border",
-                                record.markingType === "automatic"
+                                record.method === "AUTO"
                                   ? "border-blue-500/30 text-blue-400"
                                   : "border-purple-500/30 text-purple-400"
                               )}
@@ -497,9 +512,9 @@ export function Live({
                               variant="secondary"
                               className={cn(
                                 "capitalize rounded-full px-3 py-1 border font-medium",
-                                record.status === "present"
+                                record.status === "PRESENT"
                                   ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                                  : record.status === "late"
+                                  : record.status === "LATE"
                                     ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/30"
                                     : "bg-red-500/10 text-red-400 border-red-500/30"
                               )}

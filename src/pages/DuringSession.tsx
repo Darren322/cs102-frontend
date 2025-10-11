@@ -5,6 +5,8 @@ import { Session } from "../components/sessions";
 import { Settings } from "../components/settings";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useNavigate, useParams } from "react-router-dom";
+import { getCurrentSession } from "@/components/api/backend-methods/Sessions";
 
 // Types for events and attendance records
 type PresentEvent = {
@@ -436,6 +438,20 @@ export default function SmartAttendanceSystem() {
   ];
   const curText = sidebarItems.find((tab) => tab.id === activeTab);
   console.log(activeTab)
+
+  const id = useParams().id;
+  console.log(id)
+  const [isCurrentClosed, setIsCurrentClosed] = useState(false)
+
+  useEffect(() => {
+    getCurrentSession(id).then((response) => {
+      console.log(response.data.active)
+      console.log(response.data.closed)
+      setIsCurrentClosed(response.data.closed)
+    }).catch((err) => {
+      console.error(err)
+    })
+  }, [id])
   return (
     <div className="flex h-screen bg-slate-950 text-white">
       {/* Sidebar (omitted in your snippet) */}
@@ -471,6 +487,18 @@ export default function SmartAttendanceSystem() {
                     <Upload size={18} className="mr-2" />
                     Upload Image
                   </Button>
+                  {
+                    isCurrentClosed &&
+                    <Button
+                      onClick={() => startSession("upload")}
+                      className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/30 
+             font-medium rounded-lg px-4 py-2 backdrop-blur-sm shadow-sm transition-all"
+                    >
+                      <Upload size={18} className="mr-2" />
+                      Export
+                    </Button>
+                  }
+
                 </div>
               )}
 
@@ -499,50 +527,50 @@ export default function SmartAttendanceSystem() {
               )}
             </CardHeader>
           </Card>
-                      <div className="ml-8 w-[100%]">
-          {activeTab === "dashboard" && (
-            <Live
-              sessionActive={sessionActive}
-              currentSessionId={currentSessionId}
-              recognitionMode={recognitionMode}
-              running={running}
-              err={err}
-              presentList={presentList}
-              attendanceRecords={attendanceRecords}
-              editingRecord={editingRecord}
-              showManualEntry={showManualEntry}
-              manualStudentId={manualStudentId}
-              manualRemarks={manualRemarks}
-              videoRef={videoRef}
-              serverImgRef={serverImgRef}
-              captureRef={captureRef}
-              fileInputRef={fileInputRef}
-              WIDTH={WIDTH}
-              HEIGHT={HEIGHT}
-              setRunning={setRunning}
-              setShowManualEntry={setShowManualEntry}
-              stopSession={stopSession}
-              handleFileUpload={handleFileUpload}
-              handleManualEntry={handleManualEntry}
-              updateRecord={updateRecord}
-              setEditingRecord={setEditingRecord}
-              // NEW props for showing FPS under "Mode"
-              fps={fps}
-              recvFps={recvFps} // optional: show server stream rate too
-              setActiveTab={setActiveTab} // if your Live needs to switch tabs
-            />
-          )}
+          <div className="ml-8 w-[100%]">
+            {activeTab === "dashboard" && (
+              <Live
+                sessionActive={sessionActive}
+                currentSessionId={currentSessionId}
+                recognitionMode={recognitionMode}
+                running={running}
+                err={err}
+                presentList={presentList}
+                attendanceRecords={attendanceRecords}
+                editingRecord={editingRecord}
+                showManualEntry={showManualEntry}
+                manualStudentId={manualStudentId}
+                manualRemarks={manualRemarks}
+                videoRef={videoRef}
+                serverImgRef={serverImgRef}
+                captureRef={captureRef}
+                fileInputRef={fileInputRef}
+                WIDTH={WIDTH}
+                HEIGHT={HEIGHT}
+                setRunning={setRunning}
+                setShowManualEntry={setShowManualEntry}
+                stopSession={stopSession}
+                handleFileUpload={handleFileUpload}
+                handleManualEntry={handleManualEntry}
+                updateRecord={updateRecord}
+                setEditingRecord={setEditingRecord}
+                // NEW props for showing FPS under "Mode"
+                fps={fps}
+                recvFps={recvFps} // optional: show server stream rate too
+                setActiveTab={setActiveTab} // if your Live needs to switch tabs
+              />
+            )}
 
-          {activeTab === "sessions" && (
-            <Session
-              attendanceRecords={attendanceRecords}
-              editingRecord={editingRecord}
-              updateRecord={updateRecord}
-              setEditingRecord={setEditingRecord}
-            />
-          )}
+            {activeTab === "sessions" && (
+              <Session
+                attendanceRecords={attendanceRecords}
+                editingRecord={editingRecord}
+                updateRecord={updateRecord}
+                setEditingRecord={setEditingRecord}
+              />
+            )}
 
-          {/* {activeTab === "students" && (
+            {/* {activeTab === "students" && (
               <Students
                 attendanceRecords={attendanceRecords}
                 editingRecord={editingRecord}
@@ -551,15 +579,15 @@ export default function SmartAttendanceSystem() {
               />
             )} */}
 
-          {activeTab === "settings" && (
-            <Settings
-              attendanceRecords={attendanceRecords}
-              editingRecord={editingRecord}
-              updateRecord={updateRecord}
-              setEditingRecord={setEditingRecord}
-            />
-          )}
-        </div>
+            {activeTab === "settings" && (
+              <Settings
+                attendanceRecords={attendanceRecords}
+                editingRecord={editingRecord}
+                updateRecord={updateRecord}
+                setEditingRecord={setEditingRecord}
+              />
+            )}
+          </div>
         </div>
 
 
