@@ -9,3 +9,7 @@ export function formatTime(currentDate: string) {
         hour12: true, // true = 12-hour format with AM/PM
     });
 }
+
+export function formatDate(currentDate:string){
+    return new Date(currentDate).toLocaleDateString("en-GB");
+}

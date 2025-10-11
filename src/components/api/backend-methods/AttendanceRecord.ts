@@ -67,5 +67,8 @@ export function manualMarkStudent(sessionId:any, studentId:any){
     return res;
 }
 
-
+export function updateSingle(sessionId: any, studentId:any){
+    const res = api.put(url + `/manual/${sessionId}/${studentId}`)
+    return res;
+}
 

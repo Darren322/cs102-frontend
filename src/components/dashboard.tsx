@@ -5,8 +5,8 @@ import { Play, Square, Edit3, Upload, Check, X } from "lucide-react"
 import { useEffect, useState } from "react"
 import type { LiveProps } from "../components/utils/dashboard-types"
 import { useParams } from "react-router-dom";
-import { getAttendanceRecordForSession } from "./api/backend-methods/AttendanceRecord";
-import { stringFormatter } from "./utils/stringFormatter";
+import { getAttendanceRecordForSession, updateSingle } from "./api/backend-methods/AttendanceRecord";
+import { formatDate, stringFormatter } from "./utils/stringFormatter";
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -122,17 +122,52 @@ export function Live({
       console.error(error);
     })
   }, [p])
-
-  useEffect(()=>{
-    getCurrentSession(p).then((response)=>{
+  const [currentSessionDet, setCurrentSessionDet] = useState<any>([])
+  useEffect(() => {
+    getCurrentSession(p).then((response) => {
+      setCurrentSessionDet(response.data)
       setCurrentClose(response.data.closed)
-    }).catch((err)=>{
+    }).catch((err) => {
       console.error(err)
     })
-  },[p] )
+  }, [p])
 
 
-  console.log(isCurrentSessionClosed)
+  console.log(currentSessionDet)
+  const [editingRows, setEditingRows] = useState<{ [id: string]: boolean }>({});
+
+
+  const toggleEditRow = (id: string) => {
+    setEditingRows(prev => ({
+      ...prev,
+      [id]: !prev[id], // toggle only that row
+    }));
+  };
+
+
+  const handleSingleUpdate = async (sessionId: string, studentId: string) => {
+    try {
+      const recordToUpdate = currentAttendanceRecords.find(
+        (r: any) => r.sessionId === sessionId && r.studentId === studentId
+      );
+      if (!recordToUpdate) {
+        console.error("Record not found for update");
+        return;
+      }
+      updateSingle(sessionId, studentId).then((response) => {
+        setEditingRows((prev) => ({
+          ...prev,
+          [recordToUpdate.attendanceId]: false,
+        }));
+        console.log(response)
+      }).catch((error) => {
+        console.error(error)
+      })
+
+    } catch (error) {
+      console.error("❌ Failed to update record:", error);
+    }
+  };
   return (
     <div
       className={cn(
@@ -328,10 +363,22 @@ export function Live({
         )}
         <Card className="mt-2 border-border/60 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 rounded-2xl w-full -mx-3 sm:-mx-6 lg:-mx-8">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Attendance Records</CardTitle>
+            <CardTitle className="text-lg">Current Session Date: {formatDate(currentSessionDet.date)}</CardTitle>
+
             <CardDescription className="text-gray-300">
-              All attendance records for current and past sessions
+              {currentSessionDet && currentSessionDet.course && (
+                <span>Course Name: {currentSessionDet.course.courseName}</span>
+              )}
             </CardDescription>
+
+            <CardDescription className="text-gray-300">
+              {currentSessionDet && currentSessionDet.course && (
+                <span>Course Code: {currentSessionDet.course.courseCode}</span>
+              )}
+            </CardDescription>
+
+
+
           </CardHeader>
 
           <CardContent className="px-5">
@@ -339,7 +386,6 @@ export function Live({
               <Table className="min-w-[1200px] w-full table-auto rounded-2xl overflow-hidden">
                 <TableHeader>
                   <TableRow className="bg-gradient-to-r from-slate-800/60 to-slate-900/50 border-b border-slate-800/50">
-                    <TableHead className="text-slate-300 font-medium">Session ID</TableHead>
                     <TableHead className="text-slate-300 font-medium">Student ID</TableHead>
                     <TableHead className="text-slate-300 font-medium">Timestamp</TableHead>
                     <TableHead className="text-slate-300 font-medium">Confidence</TableHead>
@@ -360,14 +406,14 @@ export function Live({
                   ) : (
                     currentAttendanceRecords.map((record: any) => (
                       <TableRow
-                        key={record.id}
+                        key={record.attendanceId}
                         className={cn(
                           "transition-all duration-200 ease-in-out",
                           "hover:bg-slate-800/40 hover:shadow-md hover:shadow-slate-900/30"
                         )}
                       >
-                        <TableCell className="font-medium text-slate-200">{record.sessionId}</TableCell>
                         <TableCell className="font-medium text-slate-300">{record.studentId}</TableCell>
+
                         <TableCell className="text-slate-400">
                           {new Date(record.timestamp).toLocaleString()}
                         </TableCell>
@@ -390,15 +436,14 @@ export function Live({
                           </div>
                         </TableCell>
 
-                        {/* ---- Marking Type ---- */}
                         <TableCell>
-                          {editingRecord === record.id ? (
+                          {editingRows[record.attendanceId] ? (
                             <Select
                               value={record.method?.toLowerCase() ?? ""}
                               onValueChange={(v) =>
                                 setCurrentAttendanceRecords((prev) =>
                                   prev.map((r) =>
-                                    r.id === record.id ? { ...r, method: v } : r
+                                    r.attendanceId === record.attendanceId ? { ...r, method: v } : r
                                   )
                                 )
                               }
@@ -426,15 +471,14 @@ export function Live({
                           )}
                         </TableCell>
 
-                        {/* ---- Status ---- */}
                         <TableCell>
-                          {editingRecord === record.id ? (
+                          {editingRows[record.attendanceId] ? (
                             <Select
                               value={record.status?.toLowerCase() ?? ""}
                               onValueChange={(v) =>
                                 setCurrentAttendanceRecords((prev) =>
                                   prev.map((r) =>
-                                    r.id === record.id ? { ...r, status: v } : r
+                                    r.attendanceId === record.attendanceId ? { ...r, status: v } : r
                                   )
                                 )
                               }
@@ -465,15 +509,14 @@ export function Live({
                           )}
                         </TableCell>
 
-                        {/* ---- Remarks ---- */}
                         <TableCell className="max-w-[280px] text-slate-300">
-                          {editingRecord === record.id ? (
+                          {editingRows[record.attendanceId] ? (
                             <Input
                               value={record.optionalNotes ?? ""}
                               onChange={(e) =>
                                 setCurrentAttendanceRecords((prev) =>
                                   prev.map((r) =>
-                                    r.id === record.id
+                                    r.attendanceId === record.attendanceId
                                       ? { ...r, optionalNotes: e.target.value }
                                       : r
                                   )
@@ -487,19 +530,18 @@ export function Live({
                           )}
                         </TableCell>
 
-                        {/* ---- Action ---- */}
                         <TableCell className="text-right pr-6">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() =>
-                              setEditingRecord(
-                                editingRecord === record.id ? null : record.id
-                              )
+                              editingRows[record.attendanceId]
+                                ? handleSingleUpdate(record.sessionId, record.studentId)
+                                : toggleEditRow(record.attendanceId)
                             }
                             className="rounded-full border-blue-500/30 text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 hover:text-blue-100 transition-all"
                           >
-                            {editingRecord === record.id ? "Save" : "Edit"}
+                            {editingRows[record.attendanceId] ? "Save" : "Edit"}
                           </Button>
                         </TableCell>
                       </TableRow>

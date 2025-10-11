@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { createSessions } from "../components/api/backend-methods/Sessions";
+import { createSessions, getSessionByCreator } from "../components/api/backend-methods/Sessions";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 // Types for sessions and rosters
@@ -78,22 +78,18 @@ export default function SessionsPage() {
 
   // Initialize data
   useEffect(() => {
-    // Import API methods dynamically to avoid build issues
-    const loadSessions = async () => {
-      try {
-        const { getSessionByCreator } = await import("../components/api/backend-methods/Sessions")
-        const response = await getSessionByCreator()
-        console.log(response)
-        setSessionByUser(response.data)
-      } catch (error) {
-        console.error(error)
-      }
-    }
+    getSessionByCreator().then((response) => {
+      const sorted = [...response.data].sort((a, b) => {
+        return new Date(a.date).getTime() - new Date(b.date).getTime()
+      })
+      setSessionByUser(sorted)
 
-    if (typeof window !== "undefined" && localStorage["username"]) {
-      loadSessions()
-    }
-  }, [])
+    }).catch((err) => {
+      console.error(err)
+    })
+  }, [localStorage['username']])
+
+
 
   const handleCreateSession = async () => {
     const formattedEndDate = (endDate as Date).toISOString().split("T")[0];
@@ -125,7 +121,11 @@ export default function SessionsPage() {
       console.log(response)
 
       const r = await getSessionByCreator()
-      setSessionByUser(r.data)
+      const sorted = [...r.data].sort((a, b) => {
+        return new Date(a.date).getTime() - new Date(b.date).getTime()
+      })
+      setSessionByUser(sorted)
+
       console.log("success")
     } catch (error) {
       console.log(error)
@@ -139,7 +139,10 @@ export default function SessionsPage() {
       console.log(response)
 
       const r = await getSessionByCreator()
-      setSessionByUser(r.data)
+      const sorted = [...r.data].sort((a, b) => {
+        return new Date(a.date).getTime() - new Date(b.date).getTime()
+      })
+      setSessionByUser(sorted)
       console.log("success")
     } catch (error) {
       console.log(error)
@@ -156,7 +159,7 @@ export default function SessionsPage() {
   const stringFormatter = (str: string) => {
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
   }
-
+  console.log(sessionsByUser)
 
 
   return (

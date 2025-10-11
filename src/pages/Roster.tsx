@@ -26,9 +26,11 @@ import {
   CommandItem,
 } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
-import type {RosterDB} from '../components/utils/types';
+import type { RosterDB } from '../components/utils/types';
 import { getDropdownCourse } from "@/components/api/backend-methods/Courses"
 import { getStudentEnrollmentByMod } from "@/components/api/backend-methods/StudentEnrollment"
+import { addStudentToSession, getAllRoster } from "@/components/api/backend-methods/StudentSession"
+import { toast } from "sonner"
 
 type Student = {
   id: string
@@ -56,53 +58,23 @@ export default function RostersPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [showCreate, setShowCreate] = useState(false)
   const [viewRoster, setViewRoster] = useState<Roster | null>(null)
-  const [newRoster, setNewRoster] = useState({
-    name: "",
-    course: "",
-    courseCode: "",
-    semester: "Fall 2024",
-  })
+  const [currentSelected, setCurrentSelected] = useState("")
+  const [currentEnrolledStudents, setCurrentEnrolledStudents] = useState<any>([])
+  const [selectedStudents, setSelectedStudents] = useState<string[]>([])
 
   useEffect(() => {
-    const mock: Roster[] = [
-      {
-        id: "S001",
-        name: "Computer Science 101 - Morning Section",
-        course: "Introduction to Computer Science",
-        courseCode: "CS101",
-        semester: "Fall 2024",
-        instructor: "Prof. John Parker",
-        createdAt: Date.now() - 86400000,
-        lastModified: Date.now() - 3600000,
-        students: [
-          { id: "1", name: "John Doe", email: "john.doe@student.edu", studentId: "STUDENT_001", enrollmentDate: "2024-08-15", status: "active" },
-          { id: "2", name: "Jane Smith", email: "jane.smith@student.edu", studentId: "STUDENT_002", enrollmentDate: "2024-08-15", status: "active" },
-          { id: "3", name: "Bob Johnson", email: "bob.johnson@student.edu", studentId: "STUDENT_003", enrollmentDate: "2024-08-15", status: "active" },
-        ],
-      },
-      {
-        id: "S002",
-        name: "Data Structures & Algorithms",
-        course: "Advanced Programming Concepts",
-        courseCode: "CS201",
-        semester: "Fall 2024",
-        instructor: "Prof. John Parker",
-        createdAt: Date.now() - 172800000,
-        lastModified: Date.now() - 7200000,
-        students: [
-          { id: "6", name: "David Lee", email: "david.lee@student.edu", studentId: "STUDENT_006", enrollmentDate: "2024-08-15", status: "active" },
-          { id: "7", name: "Emma Davis", email: "emma.davis@student.edu", studentId: "STUDENT_007", enrollmentDate: "2024-08-15", status: "active" },
-        ],
-      },
-    ]
-    setRosters(mock)
-  }, [])
+    getAllRoster().then((response) => {
+      setRosters(response.data)
+    }).catch((err) => {
+      console.log(err)
+    })
+  }, [currentSelected])
 
-  const filtered = rosters.filter((r) =>
-    [r.name, r.course, r.courseCode].some((f) =>
-      f.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  )
+  // const filtered = rosters.filter((r) =>
+  //   [r.name, r.course, r.courseCode].some((f) =>
+  //     f.toLowerCase().includes(searchTerm.toLowerCase())
+  //   )
+  // )
   const [allCourses, setAllCourses] = useState<any>([])
   useEffect(() => {
     getDropdownCourse().then((response) => {
@@ -130,17 +102,20 @@ export default function RostersPage() {
       console.log(`Student ${studentId} -> Course ${courseCode}`);
     });
 
-    const currentUpload : RosterDB = {
-      courseCode:currentSelected,
-      studentIds : studentIds
-    }
+    addStudentToSession(courseCode, studentIds).then((response) => {
+      console.log(response)
+      setShowCreate(false)
+      toast.success('Successfully created a roster');
+    }).catch((err) => {
+      console.log(err)
+      toast.error('Something went wrong.');
+    })
+
   }
 
   const deleteRoster = (id: string) =>
     setRosters((prev) => prev.filter((r) => r.id !== id))
-  const [currentSelected, setCurrentSelected] = useState("")
-  const [currentEnrolledStudents, setCurrentEnrolledStudents] = useState<any>([])
-  const [selectedStudents, setSelectedStudents] = useState<string[]>([])
+
 
   useEffect(() => {
     if (currentSelected != "") {
@@ -198,30 +173,22 @@ export default function RostersPage() {
 
       {/* Roster Grid */}
       <div className="w-[95%] mx-auto grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-        {filtered.map((r) => (
+        {rosters.map((r) => (
           <Card
             key={r.id}
             className="rounded-2xl border border-slate-800/60 bg-slate-900/50 backdrop-blur-sm hover:bg-slate-900/70 hover:shadow-lg hover:shadow-blue-500/10 hover:scale-[1.02] transition-all duration-300"
           >
-            <CardContent className="p-6 space-y-3">
+            <CardContent className="px-6 py-2 space-y-3">
               <div>
-                <h3 className="text-lg font-semibold text-white">{r.name}</h3>
-                <p className="text-slate-400 text-sm">{r.course}</p>
-                <p className="text-slate-500 text-xs">{r.courseCode} — {r.semester}</p>
+                <h3 className="text-lg font-semibold text-white">{r.courseName}</h3>
+                <p className="text-slate-400 text-sm">{r.courseDesc}</p>
+                <p className="text-slate-500 text-xs">{r.courseCode}</p>
               </div>
 
               <div className="space-y-1 text-sm text-slate-400">
                 <div className="flex justify-between">
                   <span>Students</span>
                   <span className="text-slate-200">{r.students.length}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Created</span>
-                  <span>{new Date(r.createdAt).toLocaleDateString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Modified</span>
-                  <span>{new Date(r.lastModified).toLocaleDateString()}</span>
                 </div>
               </div>
 
@@ -245,7 +212,7 @@ export default function RostersPage() {
           </Card>
         ))}
 
-        {filtered.length === 0 && (
+        {rosters.length === 0 && (
           <div className="col-span-full text-center text-slate-400 py-20">
             <Users size={48} className="mx-auto mb-3 opacity-50" />
             <p>No rosters found</p>
@@ -346,6 +313,7 @@ export default function RostersPage() {
           </div>
 
           <DialogFooter className="mt-6">
+
             <Button
               variant="outline"
               onClick={() => setShowCreate(false)}
@@ -367,9 +335,13 @@ export default function RostersPage() {
       <Dialog open={!!viewRoster} onOpenChange={() => setViewRoster(null)}>
         <DialogContent className="max-w-4xl bg-slate-900/95 border border-slate-800/60 backdrop-blur-xl text-slate-100 rounded-2xl">
           <DialogHeader>
-            <DialogTitle>{viewRoster?.name}</DialogTitle>
+            <DialogTitle>{viewRoster?.courseName}</DialogTitle>
             <DialogDescription className="text-slate-400">
-              {viewRoster?.course} ({viewRoster?.courseCode})
+              {viewRoster?.courseDesc}
+              
+            </DialogDescription>
+            <DialogDescription>
+              Module Code: {viewRoster?.courseCode}
             </DialogDescription>
           </DialogHeader>
 

@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
-// optional: set VITE_API_URL=http://localhost:8081 in your frontend .env
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8081";
 
 type Role = "student" | "staff";
@@ -48,7 +47,7 @@ export function LoginForm({
         return;
       }
 
-      const storage = remember ? localStorage : sessionStorage;
+      const storage = localStorage
       if (data.token) {
         storage.setItem("token", data.token);
       }
