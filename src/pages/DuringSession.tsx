@@ -499,7 +499,7 @@ export default function SmartAttendanceSystem() {
               )}
             </CardHeader>
           </Card>
-                      <div className="p-6">
+                      <div className="ml-8 w-[100%]">
           {activeTab === "dashboard" && (
             <Live
               sessionActive={sessionActive}

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Users, Plus, Search, Eye, Download, Upload, X, UserPlus, Trash2 } from "lucide-react"
+import { Users, Plus, Search, Eye, Download, Upload, X, UserPlus, Trash2, Check, ChevronsUpDown } from "lucide-react"
 import { Link } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,20 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from "@/components/ui/command"
+import { cn } from "@/lib/utils"
+import type {RosterDB} from '../components/utils/types';
+import { getDropdownCourse } from "@/components/api/backend-methods/Courses"
+import { getStudentEnrollmentByMod } from "@/components/api/backend-methods/StudentEnrollment"
 
 type Student = {
   id: string
@@ -89,27 +103,54 @@ export default function RostersPage() {
       f.toLowerCase().includes(searchTerm.toLowerCase())
     )
   )
+  const [allCourses, setAllCourses] = useState<any>([])
+  useEffect(() => {
+    getDropdownCourse().then((response) => {
+      let responseData = response.data;
+      let currentCodes = responseData.map((data: any) => {
+        return data.courseCode;
+      })
+      setAllCourses(currentCodes)
+    })
+  }, [])
 
   const createRoster = () => {
-    if (!newRoster.name || !newRoster.course || !newRoster.courseCode) return
-    const roster: Roster = {
-      id: `roster_${Date.now()}`,
-      name: newRoster.name,
-      course: newRoster.course,
-      courseCode: newRoster.courseCode,
-      semester: newRoster.semester,
-      instructor: "Prof. John Parker",
-      createdAt: Date.now(),
-      lastModified: Date.now(),
-      students: [],
+    //Extract CS102, Selected students. 
+    //Get all sessions corresponding to CS102 from the Sessions table.
+    //From there, we will create for each Session of CS102, I will add the student_id, session_id, and enrollmentdate is now.
+    console.log("🧠 Selected Course:", currentSelected);
+    console.log("👩‍🎓 Selected Students:", selectedStudents);
+
+    // You now have both values
+    const courseCode = currentSelected;
+    const studentIds = selectedStudents;
+
+    // Example: print all pairs
+    studentIds.forEach((studentId) => {
+      console.log(`Student ${studentId} -> Course ${courseCode}`);
+    });
+
+    const currentUpload : RosterDB = {
+      courseCode:currentSelected,
+      studentIds : studentIds
     }
-    setRosters((prev) => [roster, ...prev])
-    setShowCreate(false)
-    setNewRoster({ name: "", course: "", courseCode: "", semester: "Fall 2024" })
   }
 
   const deleteRoster = (id: string) =>
     setRosters((prev) => prev.filter((r) => r.id !== id))
+  const [currentSelected, setCurrentSelected] = useState("")
+  const [currentEnrolledStudents, setCurrentEnrolledStudents] = useState<any>([])
+  const [selectedStudents, setSelectedStudents] = useState<string[]>([])
+
+  useEffect(() => {
+    if (currentSelected != "") {
+      getStudentEnrollmentByMod(currentSelected).then((response) => {
+        setCurrentEnrolledStudents(response.data)
+      }).catch((error) => {
+        console.log(error)
+      })
+    }
+  }, [currentSelected])
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 py-12 px-0 w-[100%]">
@@ -117,9 +158,9 @@ export default function RostersPage() {
       <Card className="w-[95%] mx-auto mb-12 rounded-2xl border border-slate-800/60 bg-slate-900/60 backdrop-blur-xl shadow-xl transition-all">
         <CardHeader className="flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0">
           <div>
-            <CardTitle className="text-2xl font-semibold text-white">Attendance Records</CardTitle>
+            <CardTitle className="text-2xl font-semibold text-white">Rosters</CardTitle>
             <CardDescription className="text-slate-400">
-              Manage records for your past sessions and rosters.
+              Rosters for modules here.
             </CardDescription>
           </div>
 
@@ -149,7 +190,7 @@ export default function RostersPage() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search rosters by name, course, or code..."
-              className="pl-10 bg-slate-950/60 border-slate-800/60 text-slate-200 rounded-xl"
+              className="pl-10 bg-slate-950/60 border-slate-800/60 text-slate-200 rounded-2xl"
             />
           </div>
         </CardContent>
@@ -223,34 +264,85 @@ export default function RostersPage() {
           </DialogHeader>
 
           <div className="space-y-4 mt-4">
-            {["name", "course", "courseCode"].map((field) => (
-              <div key={field}>
-                <Label className="capitalize">{field}</Label>
-                <Input
-                  value={(newRoster as any)[field]}
-                  onChange={(e) =>
-                    setNewRoster((prev) => ({ ...prev, [field]: e.target.value }))
-                  }
-                  placeholder={`Enter ${field}`}
-                  className="bg-slate-950/50 border-slate-800/60 text-slate-200 mt-1"
-                />
-              </div>
-            ))}
-
-            <div>
-              <Label>Semester</Label>
-              <select
-                value={newRoster.semester}
-                onChange={(e) =>
-                  setNewRoster((prev) => ({ ...prev, semester: e.target.value }))
-                }
-                className="w-full rounded-md bg-slate-950/50 border border-slate-800/60 px-3 py-2 mt-1 text-slate-200"
-              >
-                {["Fall 2024", "Spring 2024", "Summer 2024", "Winter 2024"].map((opt) => (
-                  <option key={opt}>{opt}</option>
+            <Label>Course Code</Label>
+            <Select onValueChange={(value) => setCurrentSelected(value)}>
+              <SelectTrigger className="w-full rounded-2xl">
+                <SelectValue placeholder="Course Codes" />
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl">
+                {allCourses.map((courseCode: any) => (
+                  <SelectItem key={courseCode} className="rounded-2xl" value={courseCode}>
+                    {courseCode}
+                  </SelectItem>
                 ))}
-              </select>
-            </div>
+              </SelectContent>
+            </Select>
+
+            {/* ✅ Replaced student selector */}
+            <Label>Students Enrolled in Selected Course</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className="w-full justify-between rounded-2xl bg-slate-900/50 border-slate-700 text-slate-200 hover:bg-slate-800/70"
+                >
+                  {selectedStudents.length > 0
+                    ? `${selectedStudents.length} selected`
+                    : "Select students..."}
+                  <ChevronsUpDown className="opacity-50" size={16} />
+                </Button>
+              </PopoverTrigger>
+
+              <PopoverContent className="w-[350px] p-0 rounded-2xl border-slate-700 bg-slate-900/95 text-slate-200">
+                <Command className="rounded-2xl">
+                  <CommandInput placeholder="Search students..." />
+                  <CommandList className="rounded-2xl">
+                    <CommandEmpty>No students found.</CommandEmpty>
+                    <CommandGroup>
+                      {currentEnrolledStudents.map((student: any) => {
+                        const id = student.id.studentId
+                        const isSelected = selectedStudents.includes(id)
+                        return (
+                          <CommandItem
+                            key={id}
+                            onSelect={() => {
+                              setSelectedStudents((prev) =>
+                                prev.includes(id)
+                                  ? prev.filter((s) => s !== id)
+                                  : [...prev, id]
+                              )
+                            }}
+                            className={cn(
+                              "flex items-center justify-between rounded-lg px-3 py-2 cursor-pointer transition-colors",
+                              isSelected
+                                ? "bg-green-600/20 text-green-300 hover:bg-green-600/25"
+                                : "hover:bg-slate-800/60"
+                            )}
+                          >
+                            <span>{id}</span>
+                            {isSelected && <Check className="text-green-400" size={16} />}
+                          </CommandItem>
+                        )
+                      })}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="mt-3 space-y-2">
+            <Label>Selected Students:</Label>
+            {selectedStudents.length > 0 ? (
+              <ul className="list-disc ml-5 text-sm text-slate-300">
+                {selectedStudents.map((id) => (
+                  <li key={id}>{id}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-slate-500 text-sm">No students added yet.</p>
+            )}
           </div>
 
           <DialogFooter className="mt-6">
@@ -263,7 +355,6 @@ export default function RostersPage() {
             </Button>
             <Button
               onClick={createRoster}
-              disabled={!newRoster.name || !newRoster.course || !newRoster.courseCode}
               className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30"
             >
               Create
@@ -302,11 +393,10 @@ export default function RostersPage() {
                     <td className="px-4 py-2 text-slate-400">{s.enrollmentDate}</td>
                     <td className="px-4 py-2">
                       <span
-                        className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                          s.status === "active"
-                            ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
-                            : "bg-red-500/10 text-red-300 border border-red-500/30"
-                        }`}
+                        className={`px-2 py-1 text-xs font-semibold rounded-full ${s.status === "active"
+                          ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
+                          : "bg-red-500/10 text-red-300 border border-red-500/30"
+                          }`}
                       >
                         {s.status}
                       </span>

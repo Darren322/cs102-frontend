@@ -4,7 +4,7 @@
 import { Play, Square, Edit3, Upload, Check, X } from "lucide-react"
 import { useEffect, useState } from "react"
 import type { LiveProps } from "../components/utils/dashboard-types"
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { getAttendanceRecordForSession } from "./api/backend-methods/AttendanceRecord";
 import { stringFormatter } from "./utils/stringFormatter";
 
@@ -30,6 +30,7 @@ import {
   TableCaption,
 } from "@/components/ui/table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { getCurrentSession } from "./api/backend-methods/Sessions";
 
 
 
@@ -63,7 +64,7 @@ export function Live({
   const [manualStudentId, setManualStudentId] = useState("")
   const [manualRemarks, setManualRemarks] = useState("")
   const [localRecords, setLocalRecords] = useState(attendanceRecords)
-
+  const [isCurrentSessionClosed, setCurrentClose] = useState(false)
   const updateLocalRecord = (id: string, field: string, value: any) => {
     setLocalRecords(prev => prev.map(r => (r.id === id ? { ...r, [field]: value } : r)))
   }
@@ -122,8 +123,16 @@ export function Live({
     })
   }, [p])
 
+  useEffect(()=>{
+    getCurrentSession(p).then((response)=>{
+      setCurrentClose(response.data.closed)
+    }).catch((err)=>{
+      console.error(err)
+    })
+  },[p] )
 
 
+  console.log(isCurrentSessionClosed)
   return (
     <div
       className={cn(
@@ -317,10 +326,6 @@ export function Live({
             </CardContent>
           </Card>
         )}
-
-        {/* Records */}
-        {/* Records */}
-        {/* Records */}
         <Card className="mt-2 border-border/60 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 rounded-2xl w-full -mx-3 sm:-mx-6 lg:-mx-8">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Attendance Records</CardTitle>
@@ -329,7 +334,7 @@ export function Live({
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="p-5">
+          <CardContent className="px-5">
             <div className="overflow-x-auto rounded-2xl border border-slate-800/50 bg-slate-900/30 backdrop-blur-sm shadow-inner">
               <Table className="min-w-[1200px] w-full table-auto rounded-2xl overflow-hidden">
                 <TableHeader>

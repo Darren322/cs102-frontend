@@ -14,6 +14,7 @@ import {
   Clock,
   CalendarIcon
 } from "lucide-react"
+import { toast } from "sonner"
 import { Calendar } from "@/components/ui/calendar";
 import type { Session } from "../components/utils/types" // adjust path if needed
 import { useNavigate } from 'react-router-dom';
@@ -108,9 +109,13 @@ export default function SessionsPage() {
     }
     createSessions(newSession).then((response) => {
       console.log(response)
+      setShowCreateSession(false)
+      toast.success('Created Sessions')
     }).catch((error) => {
       console.error(error)
+      toast.error('Unale to create session')
     })
+
   };
 
   const activateSession = async (sessionId: string) => {
@@ -235,100 +240,122 @@ export default function SessionsPage() {
             </Card>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {sessionsByUser?.map((session) => (
-                <Card
-                  key={session.sessionID}
-                  className="bg-slate-900/50 border-slate-800/50 hover:border-slate-700/50 transition-all duration-200 hover:shadow-xl hover:shadow-slate-900/50 rounded-2xl"
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg text-white mb-1 font-semibold">
-                          {session.course?.courseName}
-                        </CardTitle>
-                        <p className="text-sm text-slate-400 font-medium">{session.course?.courseCode}</p>
-                      </div>
-                      <Badge
-                        variant={
-                          session.status === "ACTIVE"
-                            ? "default"
-                            : session.status === "CLOSED"
-                              ? "destructive"
-                              : "secondary"
-                        }
-                        className={`rounded-full px-3 py-1 font-medium ${session.status === "ACTIVE"
-                          ? "bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/20"
-                          : session.status === "CLOSED"
-                            ? "bg-red-500/10 text-red-200 hover:bg-red-500/20 border border-red-500/20"
-                            : "bg-slate-700/50 text-slate-300 border border-slate-600/50"
-                          }`}
-                      >
-                        {stringFormatter(session.status)}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2.5 rounded-xl p-3">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-400">Date of Session:</span>
-                        <span className="text-white font-medium">{new Date(session.date).toLocaleDateString()}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-400">Start Time:</span>
-                        <span className="text-white font-medium">{formatTime(session.startTime)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-400">End Time:</span>
-                        <span className="text-white font-medium">{formatTime(session.endTime)}</span>
-                      </div>
-                    </div>
+              {
+                sessionsByUser?.map((session) => {
+                  console.log(session)
+                  return (
+                    <Card
+                      key={session.sessionID}
+                      className="bg-slate-900/50 border-slate-800/50 hover:border-slate-700/50 transition-all duration-200 hover:shadow-xl hover:shadow-slate-900/50 rounded-2xl"
+                    >
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <CardTitle className="text-lg text-white mb-1 font-semibold">
+                              {session.course?.courseName}
+                            </CardTitle>
+                            <p className="text-sm text-slate-400 font-medium">{session.course?.courseCode}</p>
+                          </div>
+                          <Badge
+                            variant={
+                              session.status === "ACTIVE"
+                                ? "default"
+                                : session.status === "CLOSED"
+                                  ? "destructive"
+                                  : "secondary"
+                            }
+                            className={`rounded-full px-3 py-1 font-medium ${session.status === "ACTIVE"
+                              ? "bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/20"
+                              : session.status === "CLOSED"
+                                ? "bg-red-500/10 text-red-200 hover:bg-red-500/20 border border-red-500/20"
+                                : "bg-slate-700/50 text-slate-300 border border-slate-600/50"
+                              }`}
+                          >
+                            {stringFormatter(session.status)}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="space-y-2.5 rounded-xl p-3">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-slate-400">Date of Session:</span>
+                            <span className="text-white font-medium">{new Date(session.date).toLocaleDateString()}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-slate-400">Start Time:</span>
+                            <span className="text-white font-medium">{formatTime(session.startTime)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-slate-400">End Time:</span>
+                            <span className="text-white font-medium">{formatTime(session.endTime)}</span>
+                          </div>
+                        </div>
 
-                    <div className="flex gap-2 pt-2 justify-end">
-                      {session.active ? (
-                        <>
-                          <Button
-                            onClick={() => closeSession(session.sessionID)}
-                            className="
-    rounded-full h-10 px-5 font-medium
-    bg-red-500/20 text-red-300 border border-red-500/30
-    backdrop-blur-md transition-all
-    hover:bg-red-500/30 hover:text-red-100 hover:border-red-400/50
-    shadow-sm hover:shadow-red-500/20
-  "
-                          >
-                            Close Session
-                          </Button>
-                          <Button
-                            onClick={() => { navigate(`/session_start/${session.sessionID}`); }}
-                            className="
-    rounded-full h-10 px-5 font-medium
-    bg-green-500/20 text-green-300 border border-green-500/30
-    backdrop-blur-md transition-all
-    hover:bg-green-500/30 hover:text-green-100 hover:border-green-400/50
-    shadow-sm hover:shadow-green-500/20
-  "
-                          >
-                            Take Attendance
-                          </Button>
-                        </>
-                      ) : (
-                        <Button
-                          onClick={() => activateSession(session.sessionID)}
-                          className="
-    rounded-full h-10 px-5 font-medium
-    bg-green-500/20 text-green-300 border border-green-500/30
-    backdrop-blur-md transition-all
-    hover:bg-green-500/30 hover:text-green-100 hover:border-green-400/50
-    shadow-sm hover:shadow-green-500/20
-  "
-                        >
-                          Set Active
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                        <div className="flex gap-2 pt-2 justify-end">
+                          {session.closed && !session.active ? (
+                            // --- CLOSED ---
+                            <Button
+                              onClick={() => navigate(`/session_start/${session.sessionID}`)}
+                              className="
+        rounded-full h-10 px-5 font-medium
+        bg-blue-500/20 text-blue-300 border border-blue-500/30
+        backdrop-blur-md transition-all
+        hover:bg-blue-500/30 hover:text-blue-100 hover:border-blue-400/50
+        shadow-sm hover:shadow-blue-500/20
+      "
+                            >
+                              View Details
+                            </Button>
+                          ) : session.active ? (
+                            // --- ACTIVE ---
+                            <>
+                              <Button
+                                onClick={() => closeSession(session.sessionID)}
+                                className="
+          rounded-full h-10 px-5 font-medium
+          bg-red-500/20 text-red-300 border border-red-500/30
+          backdrop-blur-md transition-all
+          hover:bg-red-500/30 hover:text-red-100 hover:border-red-400/50
+          shadow-sm hover:shadow-red-500/20
+        "
+                              >
+                                Close Session
+                              </Button>
+                              <Button
+                                onClick={() => navigate(`/session_start/${session.sessionID}`)}
+                                className="
+          rounded-full h-10 px-5 font-medium
+          bg-green-500/20 text-green-300 border border-green-500/30
+          backdrop-blur-md transition-all
+          hover:bg-green-500/30 hover:text-green-100 hover:border-green-400/50
+          shadow-sm hover:shadow-green-500/20
+        "
+                              >
+                                Take Attendance
+                              </Button>
+                            </>
+                          ) : (
+                            // --- INACTIVE (not closed yet) ---
+                            <Button
+                              onClick={() => activateSession(session.sessionID)}
+                              className="
+        rounded-full h-10 px-5 font-medium
+        bg-green-500/20 text-green-300 border border-green-500/30
+        backdrop-blur-md transition-all
+        hover:bg-green-500/30 hover:text-green-100 hover:border-green-400/50
+        shadow-sm hover:shadow-green-500/20
+      "
+                            >
+                              Set Active
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })
+              }
+
             </div>
           </div>
         </div>

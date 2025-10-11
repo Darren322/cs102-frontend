@@ -6,3 +6,7 @@ export type Session = {
     lastDate:string
     location:string,
 }
+export type RosterDB = {
+    courseCode:string,
+    studentIds: any
+}
