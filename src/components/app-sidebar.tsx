@@ -12,20 +12,33 @@ import {
 import { getUser, logout } from "./utils/auth";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "./ui/dropdown-menu"
 
-import { Users, Clock, Settings, User, Home, User2, ChevronUp } from "lucide-react"
-import { useLocation, Link } from "react-router-dom"
+import { Users, Clock, Settings, User, Home, ChevronUp } from "lucide-react"
+import { useLocation, Link, useNavigate } from "react-router-dom"
+import { Avatar, AvatarFallback, AvatarImage } from "@radix-ui/react-avatar";
 
 export function AppSidebar() {
-    const location = useLocation()
-
+    const location = useLocation();
+    const navigate = useNavigate();
     const jwt = getUser();
     const storedUsername =
         sessionStorage.getItem("username") || localStorage.getItem("username") || "";
 
     const name = (storedUsername || (jwt?.sub ?? "") || "User").toString();
+    const initials = (() => {
+        const parts = name.trim().split(/\s+/).slice(0, 2);
+        if (parts.length === 0) return "U";
+        if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+        return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+    })();
 
-
-
+    const handleLogout = () => {
+        logout();
+        ["username", "email", "role"].forEach((k) => {
+            sessionStorage.removeItem(k);
+            localStorage.removeItem(k);
+        });
+        navigate("/login", { replace: true });
+    };
 
     const sidebarItems = [
         { id: "dashboard", label: "Dashboard", icon: Home, path: "/dashboard" },
@@ -70,7 +83,17 @@ export function AppSidebar() {
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <SidebarMenuButton className="rounded py-5 hover:cursor-pointer hover:scale-102 transition-transform">
-                                    <User2 /> <div className="min-w-0">
+                                    <Avatar className="h-7 w-7 rounded-full shrink-0">
+                                        <AvatarImage
+                                            src="https://github.com/shadcn.png"
+                                            alt={name}
+                                            className="h-7 w-7 rounded-full object-cover"
+                                        />
+                                        <AvatarFallback className="h-7 w-7 rounded-full bg-sidebar-primary text-sidebar-primary-foreground flex items-center justify-center text-sm font-medium">
+                                            {initials}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <div className="min-w-0">
                                         <p className="truncate text-sm font-medium">{name}</p>
                                     </div>
                                     <ChevronUp className="ml-auto " />
@@ -80,10 +103,12 @@ export function AppSidebar() {
                                 side="top"
                                 className="min-w-0 w-[var(--radix-popper-anchor-width)] rounded"
                             >
-                                <DropdownMenuItem className="hover:cursor-pointer rounded ">
-                                    <span>Account</span>
-                                </DropdownMenuItem>
                                 <DropdownMenuItem className="hover:cursor-pointer rounded">
+                                    <Link to="/account" className="w-full">
+                                        Account
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="hover:cursor-pointer rounded" onClick={handleLogout}>
                                     <span>Sign out</span>
                                 </DropdownMenuItem>
                             </DropdownMenuContent>

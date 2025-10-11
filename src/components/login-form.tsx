@@ -97,7 +97,7 @@ export function LoginForm({
               onClick={() => setRole("student")}
               aria-pressed={role === "student"}
               className={cn(
-                "rounded-lg border px-3 py-2 text-sm transition",
+                "rounded-lg border px-3 py-2 text-sm transition hover:cursor-pointer hover:scale-101",
                 role === "student"
                   ? "bg-slate-800 border-slate-600 text-slate-100"
                   : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"
@@ -110,7 +110,7 @@ export function LoginForm({
               onClick={() => setRole("staff")}
               aria-pressed={role === "staff"}
               className={cn(
-                "rounded-lg border px-3 py-2 text-sm transition",
+                "rounded-lg border px-3 py-2 text-sm transition hover:cursor-pointer hover:scale-101",
                 role === "staff"
                   ? "bg-slate-800 border-slate-600 text-slate-100"
                   : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"
@@ -197,7 +197,7 @@ export function LoginForm({
           <Button
             type="submit"
             disabled={loading}
-            className="w-full bg-slate-700 hover:bg-slate-600 text-slate-50"
+            className="w-full bg-slate-700 hover:bg-slate-600 text-slate-50 hover:cursor-pointer hover:scale-103"
           >
             {loading ? "Signing in…" : "Login"}
           </Button>

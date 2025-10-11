@@ -11,6 +11,7 @@ import { ProtectedRoute, PublicOnlyRoute } from "./components/routing";
 import AttendanceDetails from "./pages/AttendanceDetails";
 import RegisterPage from "./pages/register";
 import ProtectedLayout from "./pages/protectedlayout";
+import Account from "./pages/Account";
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
       {/* Protected routes (with layout) */}
       <Route element={<ProtectedRoute />}>
         <Route element={<ProtectedLayout />}>
+          <Route path ="/account" element={<Account/>}/>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/rosters" element={<RostersPage />} />
           <Route path="/import" element={<Import />} />

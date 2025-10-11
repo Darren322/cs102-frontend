@@ -6,7 +6,7 @@ import { Camera, Calendar, Mail, MapPin } from "lucide-react";
 
 export default function ProfileHeader() {
   return (
-    <Card>
+    <Card className="rounded">
       <CardContent className="p-6">
         <div className="flex flex-col items-start gap-6 md:flex-row md:items-center">
           <div className="relative">

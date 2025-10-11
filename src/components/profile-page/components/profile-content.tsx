@@ -12,17 +12,17 @@ import { Badge } from "@/components/ui/badge";
 
 export default function ProfileContent() {
   return (
-    <Tabs defaultValue="personal" className="space-y-6">
-      <TabsList className="grid w-full grid-cols-4">
-        <TabsTrigger value="personal">Personal</TabsTrigger>
-        <TabsTrigger value="account">Account</TabsTrigger>
-        <TabsTrigger value="security">Security</TabsTrigger>
-        <TabsTrigger value="notifications">Notifications</TabsTrigger>
+    <Tabs defaultValue="personal" className="space-y-6 rounded-4xl">
+      <TabsList className="grid w-full grid-cols-4 rounded">
+        <TabsTrigger value="personal" className="hover:cursor-pointer hover:backdrop-brightness-80 transition-transform">Personal</TabsTrigger>
+        <TabsTrigger value="account" className="hover:cursor-pointer hover:backdrop-brightness-80 transition-transform">Account</TabsTrigger>
+        <TabsTrigger value="security" className="hover:cursor-pointer hover:backdrop-brightness-80 transition-transform">Security</TabsTrigger>
+        <TabsTrigger value="notifications" className="hover:cursor-pointer hover:backdrop-brightness-80 transition-transform">Notifications</TabsTrigger>
       </TabsList>
 
       {/* Personal Information */}
-      <TabsContent value="personal" className="space-y-6">
-        <Card>
+      <TabsContent value="personal" className="space-y-6 rounded-4xl">
+        <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle>Personal Information</CardTitle>
             <CardDescription>Update your personal details and profile information.</CardDescription>
