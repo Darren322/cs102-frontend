@@ -1,414 +1,532 @@
-import { useState, useEffect } from "react";
-import { Camera, Upload, Plus, Calendar, Search, Filter, Eye, Trash2, MoreHorizontal, X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { activateCourse, closeCourse, getSessionByCreator } from "../components/api/backend-methods/Sessions";
-import { formatTime, stringFormatter } from "../components/utils/stringFormatter";
+"use client"
 
-//This page should show the Sessions the prof has created.
-//1 Class is 1 Session. CS102 has 1 Session.
-
-//Suitable endpoint to call here:
-//Get all By creator. 
-//Allow Creator to filter by Active/Etc.
-
-//Allow user to click on button for CREATED ones. If created, then it will show set Active or something.
-//If active, allows them to do recogntion (show two buttons) (sessionId/activate)
-//If closed, when click on card, just go to next page. (sessionId/close)
-
+import { useState, useEffect } from "react"
+import {
+  Plus,
+  Search,
+  Filter,
+  LayoutDashboard,
+  Users,
+  BookOpen,
+  FileText,
+  Settings,
+  StickyNote,
+  Clock,
+  CalendarIcon
+} from "lucide-react"
+import { Calendar } from "@/components/ui/calendar";
+import type { Session } from "../components/utils/types" // adjust path if needed
+import { useNavigate } from 'react-router-dom';
+import { cn } from "@/lib/utils"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { createSessions } from "../components/api/backend-methods/Sessions";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
 // Types for sessions and rosters
 type Roster = {
-  id: string;
-  name: string;
-  course: string;
-  semester: string;
-  students: Student[];
-  createdAt: number;
-};
+  id: string
+  name: string
+  course: string
+  semester: string
+  students: Student[]
+  createdAt: number
+}
 
 type Student = {
-  id: string;
-  name: string;
-  email: string;
-  studentId: string;
-};
+  id: string
+  name: string
+  email: string
+  studentId: string
+}
 
 type SessionRecord = {
-  id: string;
-  name: string;
-  rosterId: string;
-  rosterName: string;
-  course: string;
-  createdAt: number;
-  status: 'draft' | 'active' | 'completed';
-  attendanceCount: number;
-  totalStudents: number;
-  duration?: number;
-  recognitionMode?: 'live' | 'upload';
-};
+  id: string
+  name: string
+  rosterId: string
+  rosterName: string
+  course: string
+  createdAt: number
+  status: "draft" | "active" | "completed"
+  attendanceCount: number
+  totalStudents: number
+  duration?: number
+  recognitionMode?: "live" | "upload"
+}
+
+
 
 export default function SessionsPage() {
-  console.log(localStorage)
-  const navigate = useNavigate();
-
   // State management
-  const [sessions, setSessions] = useState<SessionRecord[]>([]);
-  const [rosters, setRosters] = useState<Roster[]>([]);
-  const [showCreateSession, setShowCreateSession] = useState(false);
-  const [selectedRoster, setSelectedRoster] = useState<string>("");
-  const [sessionName, setSessionName] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'active' | 'completed'>('all');
+  const [showCreateSession, setShowCreateSession] = useState(false)
+  const [location, setLocation] = useState("")
+  const [sessionName, setSessionName] = useState("")
+  const [searchTerm, setSearchTerm] = useState("")
+  const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "active" | "completed">("all")
+  const [sessionsByUser, setSessionByUser] = useState<any[]>([])
 
-  // Initialize mock data
+  const [endDate, setEndDate] = useState<Date>()
+  const [startDate, setStartDate] = useState<Date>()
+  const [startTime, setStartTime] = useState("")
+  const [endTime, setEndTime] = useState("")
+
+  // Initialize data
   useEffect(() => {
-
-  }, []);
-
-  // Create new session
-  const handleCreateSession = () => {
-    if (!selectedRoster || !sessionName.trim()) return;
-
-    const roster = rosters.find(r => r.id === selectedRoster);
-    if (!roster) return;
-
-    const newSession: SessionRecord = {
-      id: `session_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-      name: sessionName.trim(),
-      rosterId: selectedRoster,
-      rosterName: roster.name,
-      course: roster.course,
-      createdAt: Date.now(),
-      status: 'draft',
-      attendanceCount: 0,
-      totalStudents: roster.students.length
-    };
-
-    setSessions(prev => [newSession, ...prev]);
-    setShowCreateSession(false);
-    setSelectedRoster("");
-    setSessionName("");
-  };
-
-  // Start session - navigate to SmartAttendanceSystem
-  const startSession = (sessionId: string, mode: 'live' | 'upload') => {
-    const session = sessions.find(s => s.id === sessionId);
-    if (!session) return;
-
-    const roster = rosters.find(r => r.id === session.rosterId);
-
-    // Update session status to active
-    setSessions(prev =>
-      prev.map(s =>
-        s.id === sessionId
-          ? { ...s, status: 'active' as const, recognitionMode: mode }
-          : s
-      )
-    );
-
-    // Navigate to SmartAttendanceSystem with session context
-    navigate('/session_start', {
-      state: {
-        sessionId,
-        sessionName: session.name,
-        course: session.course,
-        rosterId: session.rosterId,
-        rosterName: session.rosterName,
-        recognitionMode: mode,
-        students: roster?.students || []
+    // Import API methods dynamically to avoid build issues
+    const loadSessions = async () => {
+      try {
+        const { getSessionByCreator } = await import("../components/api/backend-methods/Sessions")
+        const response = await getSessionByCreator()
+        console.log(response)
+        setSessionByUser(response.data)
+      } catch (error) {
+        console.error(error)
       }
-    });
-  };
+    }
 
-  const [sessionsByUser, setSessionByUser] = useState();
-  useEffect(() => {
-    getSessionByCreator().then((response) => {
+    if (typeof window !== "undefined" && localStorage["username"]) {
+      loadSessions()
+    }
+  }, [])
+
+  const handleCreateSession = async () => {
+    const formattedEndDate = (endDate as Date).toISOString().split("T")[0];
+    const formattedStartDate = (startDate as Date).toISOString().split("T")[0];
+
+    const newSession: Session = {
+      courseName: sessionName.trim(),
+      startTime: startTime,
+      endTime: endTime,
+      date: formattedStartDate,
+      lastDate: formattedEndDate,
+      location: location.trim(),
+    }
+    createSessions(newSession).then((response) => {
       console.log(response)
-      setSessionByUser(response.data);
     }).catch((error) => {
       console.error(error)
     })
-  }, [localStorage['username']])
+  };
 
-  const activateSession = (sessionId: string) => {
-    activateCourse(sessionId).then((response) => {
+  const activateSession = async (sessionId: string) => {
+    try {
+      const { activateCourse, getSessionByCreator } = await import("../components/api/backend-methods/Sessions")
+      const response = await activateCourse(sessionId)
       console.log(response)
-      getSessionByCreator().then((r) => {
-        setSessionByUser(r.data)
-      }).catch((e) => {
-        console.log('unable to fetch new ones.')
-      })
 
-      console.log('success')
-    }).catch((error) => {
+      const r = await getSessionByCreator()
+      setSessionByUser(r.data)
+      console.log("success")
+    } catch (error) {
       console.log(error)
-    })
-  }
-  const closeSession = (sessionId: string) => {
-    closeCourse(sessionId).then((response) => {
-      console.log(response)
-      getSessionByCreator().then((r) => {
-        setSessionByUser(r.data)
-      }).catch((e) => {
-        console.log('unable to fetch new ones.')
-      })
-      console.log('success')
-    }).catch((error) => {
-      console.log(error)
-    })
+    }
   }
 
+  const closeSession = async (sessionId: string) => {
+    try {
+      const { closeCourse, getSessionByCreator } = await import("../components/api/backend-methods/Sessions")
+      const response = await closeCourse(sessionId)
+      console.log(response)
 
-  console.log(sessionsByUser)
+      const r = await getSessionByCreator()
+      setSessionByUser(r.data)
+      console.log("success")
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  // Helper functions
+  const formatTime = (time: string) => {
+    // Add your time formatting logic here
+    return time
+  }
+  const navigate = useNavigate();
+
+  const stringFormatter = (str: string) => {
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
+  }
+
+
+
   return (
-    <div className="flex h-screen bg-gray-50 w-full">
-
-
+    <div className="flex h-screen bg-slate-950 dark">
+      {/* Main Content */}
       <div className="flex-1 overflow-hidden">
         <div className="h-full overflow-y-auto">
-          {/* Header */}
-          <div className="bg-white border-b border-gray-200 px-6 py-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-800">Attendance Sessions</h1>
-                <p className="text-gray-600 mt-1">Create and manage attendance sessions based on your sessions.</p>
-              </div>
+          <div className="p-8 pb-0">
+            <Card className="mb-6 bg-slate-900/50 border-slate-800/50 rounded-2xl shadow-xl backdrop-blur-sm">
+              <CardHeader className="px-6 py-0">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="text-2xl tracking-tight">Sessions</CardTitle>
+                    <CardDescription className="mt-1 text-muted-foreground">
+                      Manage Sessions here.
+                    </CardDescription>
+                  </div>
+                  <div className="text-sm text-slate-500">
+                    {new Date().toLocaleDateString("en-US", {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
 
-              <button
-                onClick={() => setShowCreateSession(true)}
-                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Plus size={18} className="mr-2" />
-                New Session
-              </button>
-            </div>
+                    <div className="flex justify-end">
+                      <Button
+                        onClick={() => setShowCreateSession(true)}
+                        className="
+    rounded-full h-11 px-6 font-medium
+    bg-blue-500/20 text-blue-300 border border-blue-500/30
+    backdrop-blur-md transition-all
+    hover:bg-blue-500/30 hover:text-blue-100 hover:border-blue-400/50
+    shadow-sm hover:shadow-blue-500/20
+  "
+                      >
+                        <Plus size={18} className="mr-2" />
+                        Create New Session
+                      </Button>
+                    </div>
+
+                  </div>
+
+
+                </div>
+              </CardHeader>
+            </Card>
           </div>
 
-          <div className="p-6 space-y-6">
-            {/* Search and Filter */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search size={18} className="absolute left-3 top-3 text-gray-400" />
-                    <input
+          <div className="px-8 pb-8 space-y-6">
+
+            <Card className="bg-slate-900/50 border-slate-800/50 rounded-2xl shadow-xl">
+              <CardContent className="p-5">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1 relative">
+                    <Search size={18} className="absolute left-3 top-3 text-slate-400" />
+                    <Input
                       type="text"
                       placeholder="Search sessions by name, course, or roster..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="pl-10 bg-slate-800/50  border-slate-700/50 text-white placeholder:text-slate-500 rounded-2xl h-11 focus:ring-2 focus:ring-blue-500/20"
                     />
                   </div>
+                  <div className="flex items-center gap-2">
+                    <Filter size={18} className="text-slate-400" />
+                    <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
+                      <SelectTrigger className="w-[180px] bg-slate-800/50 border-slate-700/50 text-white rounded-2xl h-11">
+                        <SelectValue placeholder="All Status" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-slate-700 rounded-xl">
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="draft">Created</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="completed">Closed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Filter size={18} className="text-gray-400" />
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value as any)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="all">All Status</option>
-                    <option value="draft">Created</option>
-                    <option value="active">Active</option>
-                    <option value="completed">Closed</option>
-                  </select>
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            {/* Sessions Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {sessionsByUser?.map((session) => {
-                console.log(session)
-
-
-                return (
-                  //this area will be our mappings (result from bern side.)
-                  <div key={session.sessionID} className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                    <div className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <h3 className="text-lg font-semibold text-gray-800 mb-1">{session.course.courseName}</h3>
-                          <p className="text-sm text-gray-500">{session.course?.courseCode}</p>
-
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full 
-                          ${session.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
-
-                              session.status === 'CLOSED' ? 'bg-red-100 text-red-800' :
-                                'bg-gray-100 text-gray-800'
-                            }`}>
-                            {stringFormatter(session.status)}
-                          </span>
-                        </div>
+              {sessionsByUser?.map((session) => (
+                <Card
+                  key={session.sessionID}
+                  className="bg-slate-900/50 border-slate-800/50 hover:border-slate-700/50 transition-all duration-200 hover:shadow-xl hover:shadow-slate-900/50 rounded-2xl"
+                >
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-lg text-white mb-1 font-semibold">
+                          {session.course?.courseName}
+                        </CardTitle>
+                        <p className="text-sm text-slate-400 font-medium">{session.course?.courseCode}</p>
                       </div>
-
-                      <div className="space-y-2 mb-4">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Date of Session:</span>
-                          <span className="text-gray-900">{new Date(session.date).toLocaleDateString()}</span>
-                        </div>
-
-
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Start Time:</span>
-                          <span className="text-gray-900">{formatTime(session.startTime)}</span>
-                        </div>
-
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">End Time:</span>
-                          <span className="text-gray-900">{formatTime(session.endTime)}</span>
-                        </div>
+                      <Badge
+                        variant={
+                          session.status === "ACTIVE"
+                            ? "default"
+                            : session.status === "CLOSED"
+                              ? "destructive"
+                              : "secondary"
+                        }
+                        className={`rounded-full px-3 py-1 font-medium ${session.status === "ACTIVE"
+                          ? "bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/20"
+                          : session.status === "CLOSED"
+                            ? "bg-red-500/10 text-red-200 hover:bg-red-500/20 border border-red-500/20"
+                            : "bg-slate-700/50 text-slate-300 border border-slate-600/50"
+                          }`}
+                      >
+                        {stringFormatter(session.status)}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2.5 rounded-xl p-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-400">Date of Session:</span>
+                        <span className="text-white font-medium">{new Date(session.date).toLocaleDateString()}</span>
                       </div>
-
-                      <div className="flex gap-2 justify-end">
-                        {session.status === 'draft' && (
-                          <>
-                            <button
-                              onClick={() => startSession(session.id, 'live')}
-                              className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
-                            >
-                              <Camera size={16} className="mr-1" />
-                              Live
-                            </button>
-                            <button
-                              onClick={() => startSession(session.id, 'upload')}
-                              className="flex-1 flex items-center justify-center px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
-                            >
-                              <Upload size={16} className="mr-1" />
-                              Upload
-                            </button>
-                          </>
-                        )}
-
-                        <div>
-                          {
-                            session.active && (
-                              <div className="grid grid-cols-2 gap-x-4">
-
-                                <button
-                                  onClick={() => closeSession(session.sessionID)}
-                                  className="px-3 py-2 bg-red-50 text-red-600 text-sm rounded-lg hover:bg-red-100 transition-colors"
-                                >
-                                  Close Session
-                                </button>
-                                <button
-                                  onClick={() => navigate(`/session_start/${session.sessionID}`)}
-                                  className="px-3 py-2 bg-green-50 text-green-600 text-sm rounded-lg hover:bg-green-100 transition-colors"
-                                >
-                                  Take Attendance
-                                </button>
-                              </div>
-
-
-
-                            )
-                          }
-                          {
-                            !session.active && (
-                              <button
-                                onClick={() => activateSession(session.sessionID)}
-                                className="px-3 py-2 bg-green-50 text-green-600 text-sm rounded-lg hover:bg-green-100 transition-colors"
-                              >
-                                Set Active
-                              </button>
-                            )
-                          }
-                        </div>
-
-
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-400">Start Time:</span>
+                        <span className="text-white font-medium">{formatTime(session.startTime)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-400">End Time:</span>
+                        <span className="text-white font-medium">{formatTime(session.endTime)}</span>
                       </div>
                     </div>
-                  </div>
-                )
-              }
-              )}
-            </div>
 
+                    <div className="flex gap-2 pt-2 justify-end">
+                      {session.active ? (
+                        <>
+                          <Button
+                            onClick={() => closeSession(session.sessionID)}
+                            className="
+    rounded-full h-10 px-5 font-medium
+    bg-red-500/20 text-red-300 border border-red-500/30
+    backdrop-blur-md transition-all
+    hover:bg-red-500/30 hover:text-red-100 hover:border-red-400/50
+    shadow-sm hover:shadow-red-500/20
+  "
+                          >
+                            Close Session
+                          </Button>
+                          <Button
+                            onClick={() => { navigate(`/session_start/${session.sessionID}`); }}
+                            className="
+    rounded-full h-10 px-5 font-medium
+    bg-green-500/20 text-green-300 border border-green-500/30
+    backdrop-blur-md transition-all
+    hover:bg-green-500/30 hover:text-green-100 hover:border-green-400/50
+    shadow-sm hover:shadow-green-500/20
+  "
+                          >
+                            Take Attendance
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          onClick={() => activateSession(session.sessionID)}
+                          className="
+    rounded-full h-10 px-5 font-medium
+    bg-green-500/20 text-green-300 border border-green-500/30
+    backdrop-blur-md transition-all
+    hover:bg-green-500/30 hover:text-green-100 hover:border-green-400/50
+    shadow-sm hover:shadow-green-500/20
+  "
+                        >
+                          Set Active
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Create Session Modal */}
-      {showCreateSession && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-800">Create New Session</h3>
-                <button
-                  onClick={() => setShowCreateSession(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X size={20} />
-                </button>
-              </div>
+      <Dialog open={showCreateSession} onOpenChange={setShowCreateSession}>
+        <DialogContent className="bg-slate-900 border-slate-800 text-white rounded-2xl shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-white text-xl font-semibold">Create New Session</DialogTitle>
+          </DialogHeader>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Session Name
-                  </label>
-                  <input
+          <div className="space-y-4 py-2">
+            <div>
+              <Label htmlFor="session-name" className="text-slate-300 font-medium">
+                Course Code
+              </Label>
+              <Input
+                id="session-name"
+                type="text"
+                value={sessionName}
+                onChange={(e) => setSessionName(e.target.value)}
+                placeholder="e.g., CS101 - Lecture 5"
+                className="mt-2 bg-slate-800/50 border-slate-700/50 text-white placeholder:text-slate-500 rounded-2xl h-11 focus:ring-2 focus:ring-blue-500/20"
+              />
+
+
+              <>
+
+
+                <div className="mt-4">
+                  <Label htmlFor="session-location" className="text-slate-300 font-medium">
+                    Location
+                  </Label>
+                  <Input
+                    id="session-location"
                     type="text"
-                    value={sessionName}
-                    onChange={(e) => setSessionName(e.target.value)}
-                    placeholder="e.g., CS101 - Lecture 5"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="e.g., SCIS 2 SR 4-1"
+                    className="mt-2 bg-slate-800/50 border-slate-700/50 text-white placeholder:text-slate-500 rounded-2xl h-11 focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Course Roster
-                  </label>
-                  <select
-                    value={selectedRoster}
-                    onChange={(e) => setSelectedRoster(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Select a roster...</option>
-                    {rosters.map((roster) => (
-                      <option key={roster.id} value={roster.id}>
-                        {roster.name} ({roster.course}) - {roster.students.length} students
-                      </option>
-                    ))}
-                  </select>
+
+                {/* === Date pickers === */}
+                <div className="flex justify-between gap-6 mt-4">
+                  {/* Start Date */}
+                  <div className="flex flex-col flex-1">
+                    <Label className="text-slate-300 font-medium">Start Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "mt-2 h-11 w-full justify-start text-left font-normal rounded-2xl bg-slate-800/50 border-slate-700/50 text-white hover:bg-slate-700/50",
+                            !startDate && "text-slate-500"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4 opacity-70" />
+                          {startDate ? format(startDate, "PPP") : "Select start date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 bg-slate-900 border-slate-800">
+                        <Calendar
+                          mode="single"
+                          selected={startDate}
+                          onSelect={setStartDate}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  {/* End Date */}
+                  <div className="flex flex-col flex-1">
+                    <Label className="text-slate-300 font-medium">End Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "mt-2 h-11 w-full justify-start text-left font-normal rounded-2xl bg-slate-800/50 border-slate-700/50 text-white hover:bg-slate-700/50",
+                            !endDate && "text-slate-500"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4 opacity-70" />
+                          {endDate ? format(endDate, "PPP") : "Select end date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 bg-slate-900 border-slate-800">
+                        <Calendar
+                          mode="single"
+                          selected={endDate}
+                          onSelect={setEndDate}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
 
-                {selectedRoster && (
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">Selected Roster Students:</h4>
-                    <div className="max-h-32 overflow-y-auto">
-                      {rosters.find(r => r.id === selectedRoster)?.students.map((student) => (
-                        <div key={student.id} className="text-xs text-gray-600 py-1">
+
+                {/* === Time pickers === */}
+                <div className="flex justify-between gap-6 mt-1">
+                  {/* Start Time */}
+                  <div className="flex flex-col flex-1">
+                    <Label className="text-slate-300 font-medium mt-5">Start Time</Label>
+                    <div className="relative mt-2">
+                      <Clock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                      <Input
+                        type="time"
+                        value={startTime}
+                        onChange={(e) => setStartTime(e.target.value)}
+                        className="pl-10 bg-slate-800/50 border-slate-700/50 text-white rounded-2xl h-11 focus:ring-2 focus:ring-blue-500/20"
+                      />
+                    </div>
+                  </div>
+
+                  {/* End Time */}
+                  <div className="flex flex-col flex-1">
+                    <Label className="text-slate-300 font-medium mt-5">End Time</Label>
+                    <div className="relative mt-2">
+                      <Clock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                      <Input
+                        type="time"
+                        value={endTime}
+                        onChange={(e) => setEndTime(e.target.value)}
+                        className="pl-10 bg-slate-800/50 border-slate-700/50 text-white rounded-2xl h-11 focus:ring-2 focus:ring-blue-500/20"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </>
+            </div>
+
+
+            {/* Comment out first */}
+            {/* <div>
+              <Label htmlFor="roster-select" className="text-slate-300 font-medium">
+                Course Roster
+              </Label>
+              <Select value={selectedRoster} onValueChange={setSelectedRoster}>
+                <SelectTrigger
+                  id="roster-select"
+                  className="mt-2 bg-slate-800/50 border-slate-700/50 text-white rounded-xl h-11"
+                >
+                  <SelectValue placeholder="Select a roster..." />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-800 border-slate-700 rounded-xl">
+                  {rosters.map((roster) => (
+                    <SelectItem key={roster.id} value={roster.id}>
+                      {roster.name} ({roster.course}) - {roster.students.length} students
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div> */}
+
+            {/* {selectedRoster && (
+              <Card className="bg-slate-800/50 border-slate-700/50 rounded-xl">
+                <CardContent className="p-4">
+                  <h4 className="text-sm font-medium text-slate-300 mb-2">Selected Roster Students:</h4>
+                  <div className="max-h-32 overflow-y-auto space-y-1">
+                    {rosters
+                      .find((r) => r.id === selectedRoster)
+                      ?.students.map((student) => (
+                        <div key={student.id} className="text-xs text-slate-400">
                           {student.name} ({student.studentId})
                         </div>
                       ))}
-                    </div>
                   </div>
-                )}
-              </div>
-
-              <div className="flex justify-end gap-3 mt-6">
-                <button
-                  onClick={() => setShowCreateSession(false)}
-                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreateSession}
-                  disabled={!selectedRoster || !sessionName.trim()}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Create Session
-                </button>
-              </div>
-            </div>
+                </CardContent>
+              </Card>
+            )} */}
           </div>
-        </div>
-      )}
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowCreateSession(false)}
+              className="
+    rounded-full h-10 px-6 font-medium
+    bg-slate-700/30 text-slate-300 border border-slate-600/40
+    backdrop-blur-md transition-all
+    hover:bg-slate-700/40 hover:text-white hover:border-slate-500/40
+  "
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateSession}
+
+              className="rounded-2xl h-10 px-6 font-medium bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Create Session
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
-  );
+  )
 }

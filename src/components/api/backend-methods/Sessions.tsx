@@ -1,5 +1,5 @@
 import { api } from '../axios';
-
+import type { Session } from "../../utils/types";
 const url = `http://localhost:8081/api/sessions`
 export function getSessionByCreator() {
     if (localStorage['username'] !== undefined) {
@@ -37,4 +37,17 @@ export function getActiveByCreator(){
         return response;
     }
     return Promise.reject("Unable to hit endpoint.")
+}
+
+export function createSessions(sessionData : any){
+    if(localStorage['username']!== undefined){
+        const response = api.post(url, sessionData, {
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-Id": localStorage['username'], // <-- your creator header
+        },
+      });
+      return response;
+    }
+    return Promise.reject("Unable to hit endpoint")
 }

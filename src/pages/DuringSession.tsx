@@ -3,6 +3,8 @@ import { Camera, Upload, Plus, SettingsIcon, Users, Clock, User } from "lucide-r
 import { Live } from "../components/dashboard";
 import { Session } from "../components/sessions";
 import { Settings } from "../components/settings";
+import { Card, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 // Types for events and attendance records
 type PresentEvent = {
@@ -231,7 +233,7 @@ export default function SmartAttendanceSystem() {
 
     ws.onopen = () => setErr("");
     ws.onerror = () => setErr("WebSocket error");
-    ws.onclose = () => {};
+    ws.onclose = () => { };
 
     // Start recv FPS ticker on connect
     recvFpsTimerRef.current = window.setInterval(() => {
@@ -424,6 +426,7 @@ export default function SmartAttendanceSystem() {
       setFps(0);
     };
   }, [running, recognitionMode]);
+  console.log(activeTab)
 
   const sidebarItems = [
     { id: "dashboard", label: "Dashboard", icon: Users, text: "Managed your Dashboard here." },
@@ -434,52 +437,52 @@ export default function SmartAttendanceSystem() {
   const curText = sidebarItems.find((tab) => tab.id === activeTab);
   console.log(activeTab)
   return (
-    <div className="flex h-screen bg-gray-50 w-full">
+    <div className="flex h-screen bg-slate-950 text-white">
       {/* Sidebar (omitted in your snippet) */}
 
       {/* Main Content */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1">
         <div className="h-full overflow-y-auto">
           {/* Header */}
-          <div className="bg-white border-b border-gray-200 px-6 py-4 pb-6">
-            <div className="flex items-center justify-between">
+          <Card className="bg-slate-900/50 border-slate-800/50 rounded-2xl shadow-xl backdrop-blur-sm mx-8 mt-6">
+            <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-4 md:space-y-0 px-6 py-5">
               <div>
-                <h2 className="text-2xl font-bold text-gray-800">
+                <h2 className="text-2xl font-semibold tracking-tight">
                   {activeTab === "dashboard"
                     ? "Attendance Dashboard"
                     : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
                 </h2>
-                <p className="text-gray-600 mt-1">{curText?.text}</p>
+                <p className="text-gray-300 mt-1">{curText?.text}</p>
               </div>
 
               {activeTab === "dashboard" && !sessionActive && (
                 <div className="flex gap-3">
-                  <button
+                  <Button
                     onClick={() => startSession("live")}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 transition-all"
                   >
                     <Camera size={18} className="mr-2" />
                     Live Recognition
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => startSession("upload")}
-                    className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    className="bg-green-500/10 hover:bg-green-500/20 border-green-500/30 text-green-300 transition-all"
                   >
                     <Upload size={18} className="mr-2" />
                     Upload Image
-                  </button>
+                  </Button>
                 </div>
               )}
 
               {activeTab === "sessions" && (
                 <div className="flex gap-3">
-                  <button
+                  <Button
                     onClick={() => startSession("live")}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 transition-all"
                   >
                     <Plus size={18} className="mr-2" />
                     Create Sessions
-                  </button>
+                  </Button>
                 </div>
               )}
 
@@ -494,53 +497,52 @@ export default function SmartAttendanceSystem() {
                   </button>
                 </div>
               )}
-            </div>
-          </div>
+            </CardHeader>
+          </Card>
+                      <div className="p-6">
+          {activeTab === "dashboard" && (
+            <Live
+              sessionActive={sessionActive}
+              currentSessionId={currentSessionId}
+              recognitionMode={recognitionMode}
+              running={running}
+              err={err}
+              presentList={presentList}
+              attendanceRecords={attendanceRecords}
+              editingRecord={editingRecord}
+              showManualEntry={showManualEntry}
+              manualStudentId={manualStudentId}
+              manualRemarks={manualRemarks}
+              videoRef={videoRef}
+              serverImgRef={serverImgRef}
+              captureRef={captureRef}
+              fileInputRef={fileInputRef}
+              WIDTH={WIDTH}
+              HEIGHT={HEIGHT}
+              setRunning={setRunning}
+              setShowManualEntry={setShowManualEntry}
+              stopSession={stopSession}
+              handleFileUpload={handleFileUpload}
+              handleManualEntry={handleManualEntry}
+              updateRecord={updateRecord}
+              setEditingRecord={setEditingRecord}
+              // NEW props for showing FPS under "Mode"
+              fps={fps}
+              recvFps={recvFps} // optional: show server stream rate too
+              setActiveTab={setActiveTab} // if your Live needs to switch tabs
+            />
+          )}
 
-          <div className="p-6">
-            {activeTab === "dashboard" && (
-              <Live
-                sessionActive={sessionActive}
-                currentSessionId={currentSessionId}
-                recognitionMode={recognitionMode}
-                running={running}
-                err={err}
-                presentList={presentList}
-                attendanceRecords={attendanceRecords}
-                editingRecord={editingRecord}
-                showManualEntry={showManualEntry}
-                manualStudentId={manualStudentId}
-                manualRemarks={manualRemarks}
-                videoRef={videoRef}
-                serverImgRef={serverImgRef}
-                captureRef={captureRef}
-                fileInputRef={fileInputRef}
-                WIDTH={WIDTH}
-                HEIGHT={HEIGHT}
-                setRunning={setRunning}
-                setShowManualEntry={setShowManualEntry}
-                stopSession={stopSession}
-                handleFileUpload={handleFileUpload}
-                handleManualEntry={handleManualEntry}
-                updateRecord={updateRecord}
-                setEditingRecord={setEditingRecord}
-                // NEW props for showing FPS under "Mode"
-                fps={fps}
-                recvFps={recvFps} // optional: show server stream rate too
-                setActiveTab={setActiveTab} // if your Live needs to switch tabs
-              />
-            )}
+          {activeTab === "sessions" && (
+            <Session
+              attendanceRecords={attendanceRecords}
+              editingRecord={editingRecord}
+              updateRecord={updateRecord}
+              setEditingRecord={setEditingRecord}
+            />
+          )}
 
-            {activeTab === "sessions" && (
-              <Session
-                attendanceRecords={attendanceRecords}
-                editingRecord={editingRecord}
-                updateRecord={updateRecord}
-                setEditingRecord={setEditingRecord}
-              />
-            )}
-
-            {/* {activeTab === "students" && (
+          {/* {activeTab === "students" && (
               <Students
                 attendanceRecords={attendanceRecords}
                 editingRecord={editingRecord}
@@ -549,16 +551,18 @@ export default function SmartAttendanceSystem() {
               />
             )} */}
 
-            {activeTab === "settings" && (
-              <Settings
-                attendanceRecords={attendanceRecords}
-                editingRecord={editingRecord}
-                updateRecord={updateRecord}
-                setEditingRecord={setEditingRecord}
-              />
-            )}
-          </div>
+          {activeTab === "settings" && (
+            <Settings
+              attendanceRecords={attendanceRecords}
+              editingRecord={editingRecord}
+              updateRecord={updateRecord}
+              setEditingRecord={setEditingRecord}
+            />
+          )}
         </div>
+        </div>
+
+
       </div>
     </div>
   );

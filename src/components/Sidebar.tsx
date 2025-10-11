@@ -37,8 +37,6 @@ export default function Sidebar({ className }: SidebarProps) {
     { id: "sessions",  label: "Sessions",  icon: Clock, path: "/sessions" },
     { id: "rosters",   label: "Rosters",   icon: Users, path: "/rosters" },
     { id: "students",  label: "Students",  icon: User, path: "/students" },
-    { id: "reports",   label: "Reports",   icon: BarChart3, path: "/reports" },
-    { id: "notes",     label: "Notes",     icon: FileText, path: "/notes" },
     { id: "settings",  label: "Settings",  icon: Settings, path: "/settings" },
   ] as const;
 

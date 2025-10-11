@@ -1,9 +1,26 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Users, Plus, Search } from "lucide-react"
-import type { SessionProps } from "../components/utils/dashboard-types"
-//Students will be the total students in the current repository.
+import { useEffect, useState } from "react"
+import { Plus, Search } from "lucide-react"
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "@/components/ui/table"
+import { getAllStudent } from "./api/backend-methods/Student"
+
 const dummyData = [
   {
     studentName: "Nicholas Soh",
@@ -33,123 +50,125 @@ const dummyData = [
 
 export default function Students() {
   const [searchTerm, setSearchTerm] = useState("")
+  const [allStudents, setAllStudents] = useState<any>([])
 
-  const filteredStudents = dummyData.filter((s) =>
-    s.studentName.toLowerCase().includes(searchTerm.toLowerCase())
+  useEffect(() => {
+    getAllStudent()
+      .then((response) => {
+        setAllStudents(response.data)
+        console.log("Success")
+      })
+      .catch((err) => {
+        console.log(err)
+      })
+  }, [])
+
+  console.log(allStudents)
+
+  const filteredStudents = allStudents.filter((s: any) =>
+    s.username.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   return (
-    <div className="flex h-screen w-full bg-gray-50">
-      <div className="flex-1 overflow-hidden">
-        <div className="h-full overflow-y-auto">
-          {/* Header */}
-          <div className="bg-white border-b border-gray-200 px-6 py-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-800">
-                  Student Directory
-                </h1>
-                <p className="text-gray-600 mt-1">
-                  Manage all students registered in the system
-                </p>
-              </div>
-
-              <div className="flex gap-3">
-                <button className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                  <Plus size={18} className="mr-2" />
-                  Add Student
-                </button>
-              </div>
-            </div>
+    <div className="min-h-screen bg-slate-950 text-slate-100 py-12 px-6">
+      {/* Floating Header */}
+      <div className="w-full mb-10">
+        <div className="w-full rounded-2xl border border-slate-800/60 bg-slate-900/60 backdrop-blur-xl shadow-xl px-6 py-5 flex flex-col md:flex-row md:items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-white">Student Directory</h1>
+            <p className="text-slate-400 mt-1">
+              Manage all students registered in the system
+            </p>
           </div>
 
-          {/* Main content */}
-          <div className="p-6 space-y-6">
-            {/* Search Bar */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="relative">
-                <Search
-                  size={18}
-                  className="absolute left-3 top-3 text-gray-400"
-                />
-                <input
-                  type="text"
-                  placeholder="Search students by name or ID..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-
-            {/* Students Table */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Student Name
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Student ID
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Email
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Phone
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Image
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {filteredStudents.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={5}
-                          className="px-6 py-12 text-center text-gray-500"
-                        >
-                          No students found.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredStudents.map((record) => (
-                        <tr
-                          key={record.studentID}
-                          className="hover:bg-gray-50 transition-colors"
-                        >
-                          <td className="px-6 py-4 text-sm text-gray-900">
-                            {record.studentName}
-                          </td>
-                          <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                            {record.studentID}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-500">
-                            {record.studentEmail}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-500">
-                            {record.studentPhone}
-                          </td>
-                          <td className="px-6 py-4">
-                            <img
-                              src={record.studentImage}
-                              alt={record.studentName}
-                              className="w-[100px] h-[100px] rounded-lg object-cover border"
-                            />
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+          <div className="flex gap-3 mt-4 md:mt-0">
+            <Button className="bg-green-500/20 hover:bg-green-500/30 border border-green-500/40 text-green-300">
+              <Plus size={18} className="mr-2" />
+              Add Student
+            </Button>
           </div>
         </div>
       </div>
+
+      {/* Search Bar */}
+      <Card className="w-full mb-10 rounded-2xl border border-slate-800/50 bg-slate-900/50 backdrop-blur-sm">
+        <CardContent className="p-4">
+          <div className="relative">
+            <Search size={18} className="absolute left-3 top-3 text-slate-400" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search students by name or ID..."
+              className="pl-10 bg-slate-950/60 border-slate-800/60 text-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/40"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Students Table */}
+      <Card className="w-full rounded-2xl border border-slate-800/60 bg-slate-900/60 backdrop-blur-md shadow-xl overflow-hidden">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold text-white">
+            All Registered Students
+          </CardTitle>
+          <CardDescription className="text-slate-400">
+            View and manage all student profiles
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent>
+          <Table>
+            <TableHeader className="bg-slate-800/70 text-slate-300 uppercase text-xs">
+              <TableRow>
+                <TableHead>Student Name</TableHead>
+                <TableHead>Student ID</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Image</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredStudents.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    className="text-center text-slate-500 py-8"
+                  >
+                    No students found.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredStudents.map((record: any) => (
+                  <TableRow
+                    key={record.username}
+                    className="hover:bg-slate-800/40 transition-colors"
+                  >
+                    <TableCell className="text-slate-200">
+                      {record.username}
+                    </TableCell>
+                    <TableCell className="text-slate-300 font-medium">
+                      {record.studentId}
+                    </TableCell>
+                    <TableCell className="text-slate-400">
+                      {record.email}
+                    </TableCell>
+                    <TableCell className="text-slate-400">
+                      {record.phone}
+                    </TableCell>
+                    <TableCell>
+                      <img
+                        src={record.studentImage}
+                        alt={record.studentName}
+                        className="w-[80px] h-[80px] rounded-lg object-cover border border-slate-800 shadow-sm"
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   )
 }
