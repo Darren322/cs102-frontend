@@ -10,7 +10,7 @@ import Students from "./components/students";
 import { ProtectedRoute, PublicOnlyRoute } from "./components/routing";
 import AttendanceDetails from "./pages/AttendanceDetails";
 import RegisterPage from "./pages/register";
-import ProtectedLayout from "./components/protectedlayout";
+import ProtectedLayout from "./pages/protectedlayout";
 
 function App() {
   return (

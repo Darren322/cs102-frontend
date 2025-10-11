@@ -70,7 +70,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex h-screen bg-slate-950 text-white">
-      <div className="flex-1 overflow-y-auto p-8">
+      <div className="flex-1 p-15">
         {/* Header */}
         <Card className="mb-6 bg-slate-900/50 border-slate-800/50 rounded-2xl shadow-xl backdrop-blur-sm">
           <CardHeader className="flex-row items-center justify-between space-y-0">
