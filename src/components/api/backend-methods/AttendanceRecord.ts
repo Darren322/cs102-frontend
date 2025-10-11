@@ -67,8 +67,13 @@ export function manualMarkStudent(sessionId:any, studentId:any){
     return res;
 }
 
-export function updateSingle(sessionId: any, studentId:any){
-    const res = api.put(url + `/manual/${sessionId}/${studentId}`)
-    return res;
+export function updateSingle(sessionId: any, studentId:any, status:string){
+  return api.put(
+    `${url}/manual/${sessionId}/${studentId}`,
+    null, // no body — since backend uses @RequestParam
+    {
+      params: { status }, // this adds ?status=PRESENT (etc)
+    }
+  );
 }
 

@@ -154,7 +154,7 @@ export function Live({
         console.error("Record not found for update");
         return;
       }
-      updateSingle(sessionId, studentId).then((response) => {
+      updateSingle(sessionId, studentId, "").then((response) => {
         setEditingRows((prev) => ({
           ...prev,
           [recordToUpdate.attendanceId]: false,
