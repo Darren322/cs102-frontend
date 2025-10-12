@@ -68,7 +68,7 @@ export default function SessionsPage() {
   const [location, setLocation] = useState("")
   const [sessionName, setSessionName] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "active" | "completed">("all")
+  const [statusFilter, setStatusFilter] = useState<any>("all")
   const [sessionsByUser, setSessionByUser] = useState<any[]>([])
 
   const [endDate, setEndDate] = useState<Date>()
@@ -106,6 +106,14 @@ export default function SessionsPage() {
     createSessions(newSession).then((response) => {
       console.log(response)
       setShowCreateSession(false)
+      getSessionByCreator().then((r) => {
+        const sorted = [...r.data].sort((a, b) => {
+          return new Date(a.date).getTime() - new Date(b.date).getTime()
+        })
+        setSessionByUser(sorted)
+      }).catch((err) => {
+        console.error(err)
+      })
       toast.success('Created Sessions')
     }).catch((error) => {
       console.error(error)
@@ -160,6 +168,14 @@ export default function SessionsPage() {
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
   }
   console.log(sessionsByUser)
+
+
+  const filteredData = sessionsByUser.filter((sess) => {
+    if (statusFilter == "CREATED") { return sess.status == "CREATED" }
+    if (statusFilter == "ACTIVE") { return sess.status == "ACTIVE" }
+    if (statusFilter == "CLOSED") { return sess.status == "CLOSED" }
+    if (statusFilter == "all") { return sess.status !== "CLOSED" }
+  })
 
 
   return (
@@ -232,9 +248,9 @@ export default function SessionsPage() {
                       </SelectTrigger>
                       <SelectContent className="bg-slate-800 border-slate-700 rounded-xl">
                         <SelectItem value="all">All Status</SelectItem>
-                        <SelectItem value="draft">Created</SelectItem>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="completed">Closed</SelectItem>
+                        <SelectItem value="CREATED">Created</SelectItem>
+                        <SelectItem value="ACTIVE">Active</SelectItem>
+                        <SelectItem value="CLOSED">Closed</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -244,7 +260,7 @@ export default function SessionsPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {
-                sessionsByUser?.map((session) => {
+                filteredData?.map((session) => {
                   console.log(session)
                   return (
                     <Card

@@ -76,3 +76,12 @@ export function updateSingle(sessionId: any, studentId: any, payload: any) {
     return response
 }
 
+export function batchMark(payload:any,sessionID:any){
+    const res = api.put(url+ `/batch/mark-all/${sessionID}`, payload, {
+        headers: {
+            "Content-Type": "application/json", 
+        },
+    })
+    return res;
+    //http://localhost:8081/api/attendance/batch/mark-all/6c3e6146-fa16-42b0-b112-ca979b9ea052
+}

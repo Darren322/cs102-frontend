@@ -349,7 +349,7 @@ export default function RostersPage() {
             <table className="w-full border-collapse text-sm">
               <thead className="bg-slate-800/60 text-slate-300 uppercase text-xs">
                 <tr>
-                  {["ID", "Name", "Email", "Enrolled", "Status"].map((h) => (
+                  {["ID", "Name", "Email", "Enrolled"].map((h) => (
                     <th key={h} className="px-4 py-2 text-left">
                       {h}
                     </th>
@@ -363,16 +363,6 @@ export default function RostersPage() {
                     <td className="px-4 py-2 text-slate-200 font-medium">{s.name}</td>
                     <td className="px-4 py-2 text-slate-400">{s.email}</td>
                     <td className="px-4 py-2 text-slate-400">{s.enrollmentDate}</td>
-                    <td className="px-4 py-2">
-                      <span
-                        className={`px-2 py-1 text-xs font-semibold rounded-full ${s.status === "active"
-                          ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
-                          : "bg-red-500/10 text-red-300 border border-red-500/30"
-                          }`}
-                      >
-                        {s.status}
-                      </span>
-                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, Upload, Plus, SettingsIcon, Users, Clock, User } from "lucide-react";
+import { Camera, Upload, Plus, SettingsIcon, Users, Clock, User, Highlighter } from "lucide-react";
 import { Live } from "../components/dashboard";
 import { Session } from "../components/sessions";
 import { Settings } from "../components/settings";
@@ -7,6 +7,18 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useParams } from "react-router-dom";
 import { getCurrentSession } from "@/components/api/backend-methods/Sessions";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { batchMark } from "@/components/api/backend-methods/AttendanceRecord";
+import { toast } from "sonner";
 
 // Types for events and attendance records
 type PresentEvent = {
@@ -44,6 +56,9 @@ export default function SmartAttendanceSystem() {
   const lastUrlRef = useRef<string | null>(null);
   const seqRef = useRef(1);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [showBatchDialog, setShowBatchDialog] = useState(false);
+  const [batchStatus, setBatchStatus] = useState("ABSENT");
+  const [batchRemarks, setBatchRemarks] = useState("");
 
 
   // UI state
@@ -331,7 +346,6 @@ export default function SmartAttendanceSystem() {
           }
         }
       } catch {
-        // ignore bad JSON
       }
     };
 
@@ -452,14 +466,29 @@ export default function SmartAttendanceSystem() {
       console.error(err)
     })
   }, [id])
+
+
+  const handleSubmission = () => {
+    console.log('hi')
+    let payload = {
+      "status": batchStatus,
+      "optionalNotes": `${batchRemarks}`,
+      "recordedBy": localStorage['username']
+    }
+    batchMark(payload, id).then((response) => {
+      console.log(response)
+      setShowBatchDialog(false)
+      toast.success('Successfully updated!')
+    }).catch((err) => {
+      console.error(err)
+    })
+  }
+  console.log(isCurrentClosed)
   return (
     <div className="flex h-screen bg-slate-950 text-white">
-      {/* Sidebar (omitted in your snippet) */}
 
-      {/* Main Content */}
       <div className="flex-1">
         <div className="h-full overflow-y-auto">
-          {/* Header */}
           <Card className="bg-slate-900/50 border-slate-800/50 rounded-2xl shadow-xl backdrop-blur-sm mx-8 mt-6">
             <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-4 md:space-y-0 px-6 py-5">
               <div>
@@ -471,8 +500,8 @@ export default function SmartAttendanceSystem() {
                 <p className="text-gray-300 mt-1">{curText?.text}</p>
               </div>
 
-              {activeTab === "dashboard" && !sessionActive && (
-                <div className="flex gap-3">
+              {!isCurrentClosed && (
+                <div className="grid grid-cols-2 gap-3">
                   <Button
                     onClick={() => startSession("live")}
                     className="bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 transition-all"
@@ -488,46 +517,46 @@ export default function SmartAttendanceSystem() {
                     Upload Image
                   </Button>
                   {
-                    isCurrentClosed &&
                     <Button
-                      onClick={() => startSession("upload")}
-                      className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/30 
-             font-medium rounded-lg px-4 py-2 backdrop-blur-sm shadow-sm transition-all"
+                      onClick={() => setShowBatchDialog(true)}
+                      className="
+                        bg-amber-500/20 
+                        hover:bg-amber-500/30 
+                        text-amber-300 
+                        font-semibold 
+                        rounded-lg 
+                        px-4 py-2 
+                        border border-amber-400/40 
+                        backdrop-blur-sm 
+                        shadow-sm 
+                        transition-all
+                      "
                     >
-                      <Upload size={18} className="mr-2" />
-                      Export
+                      <Highlighter size={18} className="mr-2" />
+                      Batch Mark
                     </Button>
                   }
-
                 </div>
               )}
-
-              {activeTab === "sessions" && (
-                <div className="flex gap-3">
-                  <Button
-                    onClick={() => startSession("live")}
-                    className="bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 transition-all"
+              {
+                isCurrentClosed && (
+                  <div className="grid grid-cols-1 gap-3">
+                                      <Button
+                    onClick={() => startSession("upload")}
+                    className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/30 
+             font-medium rounded-lg px-4 py-2 backdrop-blur-sm shadow-sm transition-all"
                   >
-                    <Plus size={18} className="mr-2" />
-                    Create Sessions
+                    <Upload size={18} className="mr-2" />
+                    Export
                   </Button>
-                </div>
-              )}
+                  </div>
 
-              {activeTab === "students" && (
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => startSession("live")}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <Plus size={18} className="mr-2" />
-                    Add Students
-                  </button>
-                </div>
-              )}
+                )
+              }
+
             </CardHeader>
           </Card>
-          <div className="ml-8 w-[100%]">
+          <div className="w-full">
             {activeTab === "dashboard" && (
               <Live
                 sessionActive={sessionActive}
@@ -570,14 +599,6 @@ export default function SmartAttendanceSystem() {
               />
             )}
 
-            {/* {activeTab === "students" && (
-              <Students
-                attendanceRecords={attendanceRecords}
-                editingRecord={editingRecord}
-                updateRecord={updateRecord}
-                setEditingRecord={setEditingRecord}
-              />
-            )} */}
 
             {activeTab === "settings" && (
               <Settings
@@ -592,6 +613,60 @@ export default function SmartAttendanceSystem() {
 
 
       </div>
+      <Dialog open={showBatchDialog} onOpenChange={setShowBatchDialog}>
+        <DialogContent className="bg-slate-900 border border-slate-700 text-white rounded-xl shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold text-amber-300">
+              Batch Mark Pending Students
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="flex flex-col space-y-2">
+              <Label className="text-sm text-gray-300">Status to Mark As</Label>
+              <Select value={batchStatus} onValueChange={setBatchStatus}>
+                <SelectTrigger className="bg-slate-800 border-slate-700 text-white rounded-2xl">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-slate-700">
+                  <SelectItem value="PRESENT">Present</SelectItem>
+                  <SelectItem value="LATE">Late</SelectItem>
+                  <SelectItem value="ABSENT">Absent</SelectItem>
+                  <SelectItem value="MEDICAL">Medical</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col space-y-2">
+              <Label className="text-sm text-gray-300">Remarks (Optional)</Label>
+              <Input
+                placeholder="e.g. Marked absent after 15 mins..."
+                value={batchRemarks}
+                onChange={(e) => setBatchRemarks(e.target.value)}
+                className="bg-slate-800 border-slate-700 text-white rounded-2xl"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              className="border border-slate-700 text-gray-300 hover:bg-slate-800"
+              onClick={() => setShowBatchDialog(false)}
+            >
+              Cancel
+            </Button>
+
+            <Button
+
+              onClick={handleSubmission}
+              className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/40"
+            >
+              Confirm Batch Mark
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

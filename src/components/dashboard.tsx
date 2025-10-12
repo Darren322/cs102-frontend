@@ -165,11 +165,11 @@ export function Live({
           ...prev,
           [recordToUpdate.attendanceId]: false,
         }));
-
+        let newDate = new Date().toISOString()
         setCurrentAttendanceRecords((prev) =>
           prev.map((r) =>
             r.attendanceId === recordToUpdate.attendanceId
-              ? { ...r, ...payload }
+              ? { ...r, ...payload, timestamp: newDate}
               : r
           )
         );
@@ -190,7 +190,8 @@ export function Live({
         // radial gray background (slate → slate)
         "bg-[radial-gradient(ellipse_at_bottom,theme(colors.slate.900)_0%,theme(colors.slate.950)_100%)]",
         // provide spacing so the gradient is visible around cards
-        "p-4 md:p-6 lg:p-8",
+        // "p-4 md:p-6 lg:p-8"
+        "w-auto",
         "flex flex-col justify-start min-h-screen"
 
       )}
@@ -198,8 +199,8 @@ export function Live({
       <div className="space-y-6">
 
         {sessionActive && (
-          <Card className="border-border/60 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-            <CardHeader className="pb-3">
+          <Card className="bg-slate-900/50 border-slate-800/50 rounded-2xl shadow-xl backdrop-blur-sm mx-8 mt-2">
+            <CardHeader className="pb-3 pt-4 px-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <CardTitle className="text-lg">Active Session</CardTitle>
@@ -258,9 +259,8 @@ export function Live({
             </CardHeader>
 
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Left: Live / Upload panel */}
-                <Card className="bg-muted/30">
+              <div className="flex flex-col lg:flex-row gap-6 w-full max-w-5xl">
+                <Card className="bg-muted/30 flex-1">
                   <CardContent className="p-4">
                     {recognitionMode === "live" ? (
                       <div className="relative">
@@ -310,7 +310,7 @@ export function Live({
                 </Card>
 
                 {/* Right: Present list */}
-                <Card className="bg-muted/30">
+                <Card className="w-full lg:w-1/3 bg-muted/30 flex-1">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base">Currently Present</CardTitle>
                   </CardHeader>
@@ -376,7 +376,7 @@ export function Live({
             </CardContent>
           </Card>
         )}
-        <Card className="mt-2 border-border/60 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 rounded-2xl w-full -mx-3 sm:-mx-6 lg:-mx-8">
+        <Card className="bg-slate-900/50 border-slate-800/50 rounded-2xl shadow-xl backdrop-blur-sm mx-8 mt-4">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Current Session Date: {formatDate(currentSessionDet.date)}</CardTitle>
 
@@ -396,7 +396,7 @@ export function Live({
 
           </CardHeader>
 
-          <CardContent className="px-5">
+          <CardContent className="px-6 pb-6">
             <div className="overflow-x-auto rounded-2xl border border-slate-800/50 bg-slate-900/30 backdrop-blur-sm shadow-inner">
               <Table className="min-w-[1200px] w-full table-auto rounded-2xl overflow-hidden">
                 <TableHeader>
@@ -463,7 +463,7 @@ export function Live({
                                 )
                               }
                             >
-                              <SelectTrigger className="h-8 w-[140px] bg-slate-800/50 border-slate-700/50 text-slate-200 rounded-lg">
+                              <SelectTrigger className="h-8 w-[140px] bg-slate-800/50 border-slate-700/50 text-slate-200 rounded-2xl">
                                 <SelectValue placeholder="Select type" />
                               </SelectTrigger>
                               <SelectContent className="bg-slate-900 border-slate-700">
@@ -498,7 +498,7 @@ export function Live({
                                 )
                               }
                             >
-                              <SelectTrigger className="h-8 w-[140px] bg-slate-800/50 border-slate-700/50 text-slate-200 rounded-lg">
+                              <SelectTrigger className="h-8 w-[140px] bg-slate-800/50 border-slate-700/50 text-slate-200 rounded-2xl">
                                 <SelectValue placeholder="Select status" />
                               </SelectTrigger>
                               <SelectContent className="bg-slate-900 border-slate-700">
@@ -538,7 +538,7 @@ export function Live({
                                 )
                               }
                               placeholder="Add remarks..."
-                              className="h-8 bg-slate-800/50 border-slate-700/50 rounded-lg text-slate-200"
+                              className="h-8 bg-slate-800/50 border-slate-700/50 rounded-2xl text-slate-200"
                             />
                           ) : (
                             record.optionalNotes || "-"
