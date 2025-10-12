@@ -3,6 +3,7 @@ export type LiveProps = {
   currentSessionId: string;
   recognitionMode: "live" | "upload" | null;
   running: boolean;
+  isSubmitted:boolean,
   err: string;
   presentList: Array<{ name: string; since: number }>;
   attendanceRecords: any[];

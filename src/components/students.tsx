@@ -21,32 +21,6 @@ import {
 } from "@/components/ui/table"
 import { getAllStudent } from "./api/backend-methods/Student"
 
-const dummyData = [
-  {
-    studentName: "Nicholas Soh",
-    studentID: "01455728",
-    studentEmail: "nicholassoh.2024@computing.smu.edu.sg",
-    studentPhone: "96792445",
-    studentImage:
-      "https://as2.ftcdn.net/jpg/02/90/27/39/1000_F_290273933_ukYZjDv8nqgpOBcBUo5CQyFcxAzYlZRW.jpg",
-  },
-  {
-    studentName: "John Tan",
-    studentID: "01455729",
-    studentEmail: "johntan.2024@computing.smu.edu.sg",
-    studentPhone: "91234567",
-    studentImage:
-      "https://as2.ftcdn.net/jpg/02/90/27/39/1000_F_290273933_ukYZjDv8nqgpOBcBUo5CQyFcxAzYlZRW.jpg",
-  },
-  {
-    studentName: "Rachel Lee",
-    studentID: "01455730",
-    studentEmail: "rachel.lee@computing.smu.edu.sg",
-    studentPhone: "96543210",
-    studentImage:
-      "https://as2.ftcdn.net/jpg/02/90/27/39/1000_F_290273933_ukYZjDv8nqgpOBcBUo5CQyFcxAzYlZRW.jpg",
-  },
-]
 
 export default function Students() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -71,24 +45,19 @@ export default function Students() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 py-12 px-6">
-      {/* Floating Header */}
-      <div className="w-full mb-10">
-        <div className="w-full rounded-2xl border border-slate-800/60 bg-slate-900/60 backdrop-blur-xl shadow-xl px-6 py-5 flex flex-col md:flex-row md:items-center justify-between">
+
+
+      <Card className="w-full mt-[-25px] mx-auto mb-6 rounded-2xl border border-slate-800/60 bg-slate-900/60 backdrop-blur-xl shadow-xl transition-all">
+        <CardHeader className="flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0">
           <div>
-            <h1 className="text-2xl font-semibold text-white">Student Directory</h1>
-            <p className="text-slate-400 mt-1">
-              Manage all students registered in the system
-            </p>
+            <CardTitle className="text-2xl font-semibold text-white">Students</CardTitle>
+            <CardDescription className="text-slate-400 mt-[5px]">
+              Students in Directory
+            </CardDescription>
           </div>
 
-          <div className="flex gap-3 mt-4 md:mt-0">
-            <Button className="bg-green-500/20 hover:bg-green-500/30 border border-green-500/40 text-green-300">
-              <Plus size={18} className="mr-2" />
-              Add Student
-            </Button>
-          </div>
-        </div>
-      </div>
+        </CardHeader>
+      </Card>
 
       {/* Search Bar */}
       <Card className="w-full mb-10 rounded-2xl border border-slate-800/50 bg-slate-900/50 backdrop-blur-sm">
@@ -99,7 +68,7 @@ export default function Students() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search students by name or ID..."
-              className="pl-10 bg-slate-950/60 border-slate-800/60 text-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/40"
+              className="pl-10 bg-slate-950/60 border-slate-800/60 text-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/40"
             />
           </div>
         </CardContent>

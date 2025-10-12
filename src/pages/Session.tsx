@@ -12,7 +12,9 @@ import {
   Settings,
   StickyNote,
   Clock,
-  CalendarIcon
+  CalendarIcon,
+  ChevronsUpDown,
+  Check
 } from "lucide-react"
 import { toast } from "sonner"
 import { Calendar } from "@/components/ui/calendar";
@@ -26,9 +28,12 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { createSessions, getSessionByCreator } from "../components/api/backend-methods/Sessions";
+import { createSessions, deleteSession, getSessionByCreator } from "../components/api/backend-methods/Sessions";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
+import { getDropdownCourse } from "@/components/api/backend-methods/Courses";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { getStudentEnrollmentByMod } from "@/components/api/backend-methods/StudentEnrollment";
 // Types for sessions and rosters
 type Roster = {
   id: string
@@ -95,13 +100,14 @@ export default function SessionsPage() {
     const formattedEndDate = (endDate as Date).toISOString().split("T")[0];
     const formattedStartDate = (startDate as Date).toISOString().split("T")[0];
 
-    const newSession: Session = {
-      courseName: sessionName.trim(),
-      startTime: startTime,
-      endTime: endTime,
+    const newSession = {
+      courseCode: currentSelectedCourse, // selected course from dropdown
+      startTime,
+      endTime,
       date: formattedStartDate,
       lastDate: formattedEndDate,
       location: location.trim(),
+      studentIds: selectedStudents,
     }
     createSessions(newSession).then((response) => {
       console.log(response)
@@ -116,8 +122,11 @@ export default function SessionsPage() {
       })
       toast.success('Created Sessions')
     }).catch((error) => {
+
       console.error(error)
-      toast.error('Unale to create session')
+      setShowCreateSession(false)
+      toast.error('Unable to create session')
+
     })
 
   };
@@ -177,6 +186,51 @@ export default function SessionsPage() {
     if (statusFilter == "all") { return sess.status !== "CLOSED" }
   })
 
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 6 // or 3 if you want small screens to show fewer
+  const indexOfLast = currentPage * itemsPerPage
+  const indexOfFirst = indexOfLast - itemsPerPage
+  const currentItems = filteredData?.slice(indexOfFirst, indexOfLast)
+  const [currentSelectedCourse, setCurrentSelectedCourse] = useState("")
+
+  const [allCourses, setAllCourses] = useState<any>([])
+  useEffect(() => {
+    getDropdownCourse().then((response) => {
+      let responseData = response.data;
+      let currentCodes = responseData.map((data: any) => {
+        return data.courseCode;
+      })
+      setAllCourses(currentCodes)
+    })
+  }, [])
+  const [currentEnrolledStudents, setCurrentEnrolledStudents] = useState<any>([])
+  useEffect(() => {
+    if (currentSelectedCourse != "") {
+      getStudentEnrollmentByMod(currentSelectedCourse).then((response) => {
+        setCurrentEnrolledStudents(response.data)
+      }).catch((error) => {
+        console.log(error)
+      })
+    }
+  }, [currentSelectedCourse])
+
+  const [selectedStudents, setSelectedStudents] = useState<string[]>([])
+
+  const handleDelete = (sessionID: any) => {
+    deleteSession(sessionID).then((response) => {
+      toast.success('Session successfully deleted!')
+      getSessionByCreator()
+        .then((res) => {
+          const sorted = [...res.data].sort(
+            (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+          );
+          setSessionByUser(sorted);
+        })
+        .catch((err) => console.error(err));
+    }).catch((err) => {
+      toast.error('Session failed to delete.')
+    })
+  }
 
   return (
     <div className="flex h-screen bg-slate-950 dark">
@@ -184,7 +238,7 @@ export default function SessionsPage() {
       <div className="flex-1 overflow-hidden">
         <div className="h-full overflow-y-auto">
           <div className="p-8 pb-0">
-            <Card className="mb-6 bg-slate-900/50 border-slate-800/50 rounded-2xl shadow-xl backdrop-blur-sm">
+            <Card className="mb-6 bg-slate-900/50 border-slate-800/50 rounded-2xl shadow-xl backdrop-blur-sm mt-[-10px]">
               <CardHeader className="px-6 py-0">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
@@ -260,7 +314,7 @@ export default function SessionsPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {
-                filteredData?.map((session) => {
+                currentItems?.map((session) => {
                   console.log(session)
                   return (
                     <Card
@@ -313,18 +367,38 @@ export default function SessionsPage() {
                         <div className="flex gap-2 pt-2 justify-end">
                           {session.closed && !session.active ? (
                             // --- CLOSED ---
-                            <Button
-                              onClick={() => navigate(`/session_start/${session.sessionID}`)}
-                              className="
+                            <>
+                              <Button
+                                onClick={() => { handleDelete(session.sessionID) }}
+
+                                className="
+        rounded-full h-10 px-5 font-medium
+        bg-red-500/20 text-red-300 border border-red-500/30
+        backdrop-blur-md transition-all
+        hover:bg-red-500/30 hover:text-red-100 hover:border-red-400/50
+        shadow-sm hover:shadow-blue-500/20
+      "
+                              >
+                                Delete Session
+                              </Button>
+                              <Button
+                                onClick={() => navigate(`/session_start/${session.sessionID}`)}
+                                className="
         rounded-full h-10 px-5 font-medium
         bg-blue-500/20 text-blue-300 border border-blue-500/30
         backdrop-blur-md transition-all
         hover:bg-blue-500/30 hover:text-blue-100 hover:border-blue-400/50
         shadow-sm hover:shadow-blue-500/20
       "
-                            >
-                              View Details
-                            </Button>
+                              >
+                                View Details
+                              </Button>
+
+
+                            </>
+
+
+
                           ) : session.active ? (
                             // --- ACTIVE ---
                             <>
@@ -376,6 +450,28 @@ export default function SessionsPage() {
               }
 
             </div>
+
+            <div className="flex justify-center items-center gap-4 mt-6">
+              <Button
+                variant="outline"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((prev) => prev - 1)}
+              >
+                Previous
+              </Button>
+
+              <span className="text-slate-300 text-sm">
+                Page {currentPage} of {Math.ceil(filteredData.length / itemsPerPage)}
+              </span>
+
+              <Button
+                variant="outline"
+                disabled={indexOfLast >= filteredData.length}
+                onClick={() => setCurrentPage((prev) => prev + 1)}
+              >
+                Next
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -388,18 +484,75 @@ export default function SessionsPage() {
 
           <div className="space-y-4 py-2">
             <div>
-              <Label htmlFor="session-name" className="text-slate-300 font-medium">
-                Course Code
-              </Label>
-              <Input
-                id="session-name"
-                type="text"
-                value={sessionName}
-                onChange={(e) => setSessionName(e.target.value)}
-                placeholder="e.g., CS101 - Lecture 5"
-                className="mt-2 bg-slate-800/50 border-slate-700/50 text-white placeholder:text-slate-500 rounded-2xl h-11 focus:ring-2 focus:ring-blue-500/20"
-              />
+              {/* Course Code */}
+              <Label className="text-slate-300">Course Code</Label>
+              <Select onValueChange={(value) => setCurrentSelectedCourse(value)}>
+                <SelectTrigger className="w-full rounded-2xl bg-slate-800/50 border-slate-700/50 mt-2">
+                  <SelectValue placeholder="Select a course" />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl">
+                  {allCourses.map((courseCode: any) => (
+                    <SelectItem key={courseCode} value={courseCode}>
+                      {courseCode}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
+              {currentSelectedCourse && (
+                <>
+                  <Label className="mt-4 text-slate-300 mb-2">Students Enrolled in {currentSelectedCourse}</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-between rounded-2xl bg-slate-900/50 border-slate-700/50 text-slate-200 hover:bg-slate-800/70"
+                      >
+                        {selectedStudents.length > 0
+                          ? `${selectedStudents.length} selected`
+                          : "Select students..."}
+                        <ChevronsUpDown className="opacity-50" size={16} />
+                      </Button>
+                    </PopoverTrigger>
+
+                    <PopoverContent className="w-[350px] p-0 rounded-2xl border-slate-700 bg-slate-900/95 text-slate-200">
+                      <Command>
+                        <CommandInput placeholder="Search students..." />
+                        <CommandList>
+                          <CommandEmpty>No students found.</CommandEmpty>
+                          <CommandGroup>
+                            {currentEnrolledStudents.map((student: any) => {
+                              const id = student.id.studentId
+                              const isSelected = selectedStudents.includes(id)
+                              return (
+                                <CommandItem
+                                  key={id}
+                                  onSelect={() =>
+                                    setSelectedStudents(prev =>
+                                      prev.includes(id)
+                                        ? prev.filter(s => s !== id)
+                                        : [...prev, id]
+                                    )
+                                  }
+                                  className={cn(
+                                    "flex justify-between px-3 py-2 rounded-lg",
+                                    isSelected
+                                      ? "bg-green-600/20 text-green-300"
+                                      : "hover:bg-slate-800/60"
+                                  )}
+                                >
+                                  <span>{id}</span>
+                                  {isSelected && <Check className="text-green-400" size={16} />}
+                                </CommandItem>
+                              )
+                            })}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </>
+              )}
 
               <>
 
@@ -507,47 +660,15 @@ export default function SessionsPage() {
                   </div>
                 </div>
               </>
+
+
+            </div>
+
+            <div>
+
             </div>
 
 
-            {/* Comment out first */}
-            {/* <div>
-              <Label htmlFor="roster-select" className="text-slate-300 font-medium">
-                Course Roster
-              </Label>
-              <Select value={selectedRoster} onValueChange={setSelectedRoster}>
-                <SelectTrigger
-                  id="roster-select"
-                  className="mt-2 bg-slate-800/50 border-slate-700/50 text-white rounded-xl h-11"
-                >
-                  <SelectValue placeholder="Select a roster..." />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-slate-700 rounded-xl">
-                  {rosters.map((roster) => (
-                    <SelectItem key={roster.id} value={roster.id}>
-                      {roster.name} ({roster.course}) - {roster.students.length} students
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div> */}
-
-            {/* {selectedRoster && (
-              <Card className="bg-slate-800/50 border-slate-700/50 rounded-xl">
-                <CardContent className="p-4">
-                  <h4 className="text-sm font-medium text-slate-300 mb-2">Selected Roster Students:</h4>
-                  <div className="max-h-32 overflow-y-auto space-y-1">
-                    {rosters
-                      .find((r) => r.id === selectedRoster)
-                      ?.students.map((student) => (
-                        <div key={student.id} className="text-xs text-slate-400">
-                          {student.name} ({student.studentId})
-                        </div>
-                      ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )} */}
           </div>
 
           <DialogFooter className="gap-2">

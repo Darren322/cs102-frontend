@@ -1,11 +1,11 @@
 // src/components/Live.tsx
 "use client"
 
-import { Play, Square, Edit3, Upload, Check, X } from "lucide-react"
+import { Play, Square, Edit3, Upload, Check, X, Users, XCircle, FileText, Clock } from "lucide-react"
 import { useEffect, useState } from "react"
 import type { LiveProps } from "../components/utils/dashboard-types"
 import { useParams } from "react-router-dom";
-import { getAttendanceRecordForSession, updateSingle } from "./api/backend-methods/AttendanceRecord";
+import { getAttendanceRecordForSession, getTotalAbsent, getTotalLate, getTotalMedical, getTotalPending, getTotalPresent, updateSingle } from "./api/backend-methods/AttendanceRecord";
 import { formatDate, stringFormatter } from "./utils/stringFormatter";
 
 import { cn } from "@/lib/utils"
@@ -39,6 +39,7 @@ export function Live({
   currentSessionId,
   recognitionMode,
   running,
+  isSubmitted,
   err,
   presentList,
   attendanceRecords,
@@ -121,7 +122,7 @@ export function Live({
     }).catch((error) => {
       console.error(error);
     })
-  }, [p])
+  }, [p, isSubmitted])
   const [currentSessionDet, setCurrentSessionDet] = useState<any>([])
   useEffect(() => {
     getCurrentSession(p).then((response) => {
@@ -166,10 +167,10 @@ export function Live({
           [recordToUpdate.attendanceId]: false,
         }));
         let newDate = new Date().toISOString()
-        setCurrentAttendanceRecords((prev) =>
-          prev.map((r) =>
+        setCurrentAttendanceRecords((prev: any) =>
+          prev.map((r: any) =>
             r.attendanceId === recordToUpdate.attendanceId
-              ? { ...r, ...payload, timestamp: newDate}
+              ? { ...r, ...payload, timestamp: newDate }
               : r
           )
         );
@@ -183,6 +184,41 @@ export function Live({
       console.error("❌ Failed to update record:", error);
     }
   };
+
+  const [totalPresent, setTotalPresent] = useState(0)
+  const [totalLate, setTotalLate] = useState(0)
+  const [totalPending, setTotalPending] = useState(0)
+  const [totalMedical, setTotalMedical] = useState(0)
+  const [totalAbsent, setTotalAbsent] = useState(0)
+
+  getTotalPresent(p).then((response) => {
+    console.log(response.data)
+    setTotalPresent(response.data)
+  })
+  getTotalLate(p).then((response) => {
+    console.log(response.data)
+    setTotalLate(response.data)
+  })
+
+  getTotalPending(p).then((response) => {
+    console.log(response.data)
+    setTotalPending(response.data)
+  })
+  getTotalMedical(p).then((response) => {
+    console.log(response.data)
+    setTotalMedical(response.data)
+  })
+  getTotalAbsent(p).then((response) => {
+    console.log(response.data)
+    setTotalAbsent(response.data)
+  })
+
+  const statCards = [
+    { label: 'Present', count: totalPresent, icon: Users, color: 'bg-green-500', bgColor: 'bg-green-500/10', borderColor: 'border-green-500/20' },
+    { label: 'Late', count: totalLate, icon: Clock, color: 'bg-yellow-500', bgColor: 'bg-yellow-500/10', borderColor: 'border-yellow-500/20' },
+    { label: 'Absent', count: totalAbsent, icon: XCircle, color: 'bg-red-500', bgColor: 'bg-red-500/10', borderColor: 'border-red-500/20' },
+    { label: 'MC', count: totalMedical, icon: FileText, color: 'bg-blue-500', bgColor: 'bg-blue-500/10', borderColor: 'border-blue-500/20' },
+  ];
   return (
     <div
       className={cn(
@@ -382,16 +418,35 @@ export function Live({
 
             <CardDescription className="text-gray-300">
               {currentSessionDet && currentSessionDet.course && (
-                <span>Course Name: {currentSessionDet.course.courseName}</span>
+                <span>Course Name: {currentSessionDet.course.courseName} {currentSessionDet.course.courseCode}</span>
               )}
             </CardDescription>
 
             <CardDescription className="text-gray-300">
-              {currentSessionDet && currentSessionDet.course && (
-                <span>Course Code: {currentSessionDet.course.courseCode}</span>
-              )}
-            </CardDescription>
 
+            </CardDescription>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-2">
+              {statCards.map((stat) => {
+                const Icon = stat.icon;
+
+                return (
+                  <div
+                    key={stat.label}
+                    className={`${stat.bgColor} ${stat.borderColor} border rounded-2xl p-5 transition-all hover:scale-105`}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className={`${stat.color} p-2 rounded-lg`}>
+                        <Icon className="w-5 h-5 text-white" />
+                      </div>
+                      <span className="text-2xl font-bold">{stat.count}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-300 text-sm font-medium">{stat.label}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
 
 
           </CardHeader>
@@ -401,7 +456,7 @@ export function Live({
               <Table className="min-w-[1200px] w-full table-auto rounded-2xl overflow-hidden">
                 <TableHeader>
                   <TableRow className="bg-gradient-to-r from-slate-800/60 to-slate-900/50 border-b border-slate-800/50">
-                    <TableHead className="text-slate-300 font-medium">Student ID</TableHead>
+                    <TableHead className="text-slate-300 font-medium pl-6">Student ID</TableHead>
                     <TableHead className="text-slate-300 font-medium">Timestamp</TableHead>
                     <TableHead className="text-slate-300 font-medium">Confidence</TableHead>
                     <TableHead className="text-slate-300 font-medium">Marking Type</TableHead>
@@ -427,7 +482,7 @@ export function Live({
                           "hover:bg-slate-800/40 hover:shadow-md hover:shadow-slate-900/30"
                         )}
                       >
-                        <TableCell className="font-medium text-slate-300">{record.studentId}</TableCell>
+                        <TableCell className="font-medium text-slate-300 pl-6">{record.studentId}</TableCell>
 
                         <TableCell className="text-slate-400">
                           {new Date(record.timestamp).toLocaleString()}
@@ -505,6 +560,7 @@ export function Live({
                                 <SelectItem value="present">Present</SelectItem>
                                 <SelectItem value="absent">Absent</SelectItem>
                                 <SelectItem value="late">Late</SelectItem>
+                                <SelectItem value="medical">MC</SelectItem>
                               </SelectContent>
                             </Select>
                           ) : (

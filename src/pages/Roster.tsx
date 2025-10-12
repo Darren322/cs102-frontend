@@ -130,27 +130,21 @@ export default function RostersPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 py-12 px-0 w-[100%]">
       {/* Floating Header */}
-      <Card className="w-[95%] mx-auto mb-12 rounded-2xl border border-slate-800/60 bg-slate-900/60 backdrop-blur-xl shadow-xl transition-all">
+      <Card className="w-[95%] mt-[-25px] mx-auto mb-6 rounded-2xl border border-slate-800/60 bg-slate-900/60 backdrop-blur-xl shadow-xl transition-all">
         <CardHeader className="flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0">
           <div>
             <CardTitle className="text-2xl font-semibold text-white">Rosters</CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardDescription className="text-slate-400 mt-[5px]">
               Rosters for modules here.
             </CardDescription>
           </div>
-
+          {/* Might need a edit roster or something?? */}
           <div className="flex gap-3">
             <Button
               variant="outline"
               className="bg-green-500/10 hover:bg-green-500/20 border-green-500/30 text-green-300 transition-all"
             >
               <Upload size={16} className="mr-2" /> Import CSV
-            </Button>
-            <Button
-              onClick={() => setShowCreate(true)}
-              className="bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 transition-all"
-            >
-              <Plus size={16} className="mr-2" /> New Roster
             </Button>
           </div>
         </CardHeader>

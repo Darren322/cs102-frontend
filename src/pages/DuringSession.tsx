@@ -365,12 +365,9 @@ export default function SmartAttendanceSystem() {
     };
   }, [running, recognitionMode, currentSessionId, attendanceRecords]);
 
-  // Capture & send frames to backend + compute FPS
   useEffect(() => {
     if (!running || recognitionMode !== "live") return;
     let timer = 0 as unknown as number;
-
-    // Start a 1s ticker to compute outgoing FPS
     fpsTimerRef.current = window.setInterval(() => {
       setFps(frameCountRef.current);
       frameCountRef.current = 0;
@@ -418,8 +415,6 @@ export default function SmartAttendanceSystem() {
             const seq = seqRef.current++;
             ws.send(JSON.stringify({ type: "frame", seq }));
             ws.send(blob);
-
-            // Count one sent frame (for FPS)
             frameCountRef.current += 1;
           } catch {
             setErr("Send failed");
@@ -467,7 +462,7 @@ export default function SmartAttendanceSystem() {
     })
   }, [id])
 
-
+  const [isSubmitted, setIsSubmitted] = useState(false)
   const handleSubmission = () => {
     console.log('hi')
     let payload = {
@@ -478,6 +473,7 @@ export default function SmartAttendanceSystem() {
     batchMark(payload, id).then((response) => {
       console.log(response)
       setShowBatchDialog(false)
+      setIsSubmitted(true)
       toast.success('Successfully updated!')
     }).catch((err) => {
       console.error(err)
@@ -504,14 +500,14 @@ export default function SmartAttendanceSystem() {
                 <div className="grid grid-cols-2 gap-3">
                   <Button
                     onClick={() => startSession("live")}
-                    className="bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 transition-all"
+                    className="bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 transition-all rounded-2xl px-4 py-5"
                   >
                     <Camera size={18} className="mr-2" />
                     Live Recognition
                   </Button>
                   <Button
                     onClick={() => startSession("upload")}
-                    className="bg-green-500/10 hover:bg-green-500/20 border-green-500/30 text-green-300 transition-all"
+                    className="bg-green-500/10 hover:bg-green-500/20 border-green-500/30 text-green-300 transition-all rounded-2xl px-4 py-5" 
                   >
                     <Upload size={18} className="mr-2" />
                     Upload Image
@@ -524,12 +520,12 @@ export default function SmartAttendanceSystem() {
                         hover:bg-amber-500/30 
                         text-amber-300 
                         font-semibold 
-                        rounded-lg 
-                        px-4 py-2 
+                        px-4 py-5 
                         border border-amber-400/40 
                         backdrop-blur-sm 
                         shadow-sm 
                         transition-all
+                        rounded-2xl
                       "
                     >
                       <Highlighter size={18} className="mr-2" />
@@ -563,6 +559,7 @@ export default function SmartAttendanceSystem() {
                 currentSessionId={currentSessionId}
                 recognitionMode={recognitionMode}
                 running={running}
+                isSubmitted={isSubmitted}
                 err={err}
                 presentList={presentList}
                 attendanceRecords={attendanceRecords}
@@ -583,10 +580,9 @@ export default function SmartAttendanceSystem() {
                 handleManualEntry={handleManualEntry}
                 updateRecord={updateRecord}
                 setEditingRecord={setEditingRecord}
-                // NEW props for showing FPS under "Mode"
                 fps={fps}
-                recvFps={recvFps} // optional: show server stream rate too
-                setActiveTab={setActiveTab} // if your Live needs to switch tabs
+                recvFps={recvFps} 
+                setActiveTab={setActiveTab} 
               />
             )}
 

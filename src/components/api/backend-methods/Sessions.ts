@@ -52,3 +52,8 @@ export function createSessions(sessionData : any){
     }
     return Promise.reject("Unable to hit endpoint")
 }
+
+export function deleteSession(sessionId:any){
+    const response = api.delete(url+`/${sessionId}`);
+    return response;
+}
