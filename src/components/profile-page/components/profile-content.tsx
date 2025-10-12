@@ -10,14 +10,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 
+import DirectionCountdownCapture from "@/components/capture/SimpleDirectionCapture";
+
 export default function ProfileContent() {
   return (
     <Tabs defaultValue="personal" className="space-y-6 rounded-4xl">
-      <TabsList className="grid w-full grid-cols-4 rounded">
+      <TabsList className="grid w-full grid-cols-3 rounded">
         <TabsTrigger value="personal" className="hover:cursor-pointer hover:backdrop-brightness-80 transition-transform">Personal</TabsTrigger>
         <TabsTrigger value="account" className="hover:cursor-pointer hover:backdrop-brightness-80 transition-transform">Account</TabsTrigger>
         <TabsTrigger value="security" className="hover:cursor-pointer hover:backdrop-brightness-80 transition-transform">Security</TabsTrigger>
-        <TabsTrigger value="notifications" className="hover:cursor-pointer hover:backdrop-brightness-80 transition-transform">Notifications</TabsTrigger>
+        {/* <TabsTrigger value="notifications" className="hover:cursor-pointer hover:backdrop-brightness-80 transition-transform">Notifications</TabsTrigger> */}
       </TabsList>
 
       {/* Personal Information */}
@@ -141,69 +143,20 @@ export default function ProfileContent() {
 
       {/* Security Settings */}
       <TabsContent value="security" className="space-y-6">
-        <Card>
+        <Card className="justify-center flex-1 text-center">
           <CardHeader>
-            <CardTitle>Security Settings</CardTitle>
-            <CardDescription>Manage your account security and authentication.</CardDescription>
+            <CardTitle>Face Enrollment</CardTitle>
+            <CardDescription>Upload your faces for live attendance.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <Label className="text-base">Password</Label>
-                  <p className="text-muted-foreground text-sm">Last changed 3 months ago</p>
-                </div>
-                <Button variant="outline">
-                  <Key className="mr-2 h-4 w-4" />
-                  Change Password
-                </Button>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <Label className="text-base">Two-Factor Authentication</Label>
-                  <p className="text-muted-foreground text-sm">
-                    Add an extra layer of security to your account
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="border-green-200 bg-green-50 text-green-700">
-                    Enabled
-                  </Badge>
-                  <Button variant="outline" size="sm">
-                    Configure
-                  </Button>
-                </div>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <Label className="text-base">Login Notifications</Label>
-                  <p className="text-muted-foreground text-sm">
-                    Get notified when someone logs into your account
-                  </p>
-                </div>
-                <Switch defaultChecked />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <Label className="text-base">Active Sessions</Label>
-                  <p className="text-muted-foreground text-sm">
-                    Manage devices that are logged into your account
-                  </p>
-                </div>
-                <Button variant="outline">
-                  <Shield className="mr-2 h-4 w-4" />
-                  View Sessions
-                </Button>
-              </div>
-            </div>
+          <CardContent className="space-y-6 justify-center">
+          <DirectionCountdownCapture/>
+             
+             
           </CardContent>
         </Card>
       </TabsContent>
 
-      {/* Notification Settings */}
+      {/* Notification Settings
       <TabsContent value="notifications" className="space-y-6">
         <Card>
           <CardHeader>
@@ -262,7 +215,7 @@ export default function ProfileContent() {
             </div>
           </CardContent>
         </Card>
-      </TabsContent>
+      </TabsContent> */}
     </Tabs>
   );
 }

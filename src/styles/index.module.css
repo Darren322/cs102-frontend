@@ -1,0 +1,20 @@
+.app {
+  font-family: "Montserrat", sans-serif;
+  font-size: 100%;
+  color: #404354;
+  display: flex;
+  flex-flow: column;
+  align-items: center;
+  text-align: center;
+}
+
+.container {
+  max-width: 50rem;
+  margin: .5rem auto;
+  position: relative;
+  overflow: hidden;
+} 
+
+.container img {
+  max-width: 100%;
+}
