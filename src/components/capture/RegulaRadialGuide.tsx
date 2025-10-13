@@ -15,29 +15,20 @@ function dirToAngle(d: Direction) {
     case "DOWN-LEFT": return 135;
     case "LEFT": return 180;
     case "UP-LEFT": return -135;
-    default: return -90; // STRAIGHT/NO_FACE ~ up
+    default: return -90; // STRAIGHT/NO_FACE not used for a single arc
   }
 }
 
 type Props = {
-  /** Size of your circular video (same as <CameraCircle size>) */
-  circleSize: number;
-
-  /** The step you want to hint (target) */
+  circleSize: number;       // exact video circle DIAMETER (must match CameraCircle)
   hintDirection: Direction;
-
-  /** When true, force the ring back to gray (e.g., when flow is done) */
   done?: boolean;
-
-  /** How wide the hint should be: fraction of ring (e.g., 0.1 = 1/10) */
   hintFraction?: number;
-
-  /** Style knobs */
-  spokes?: number;        // default 100
-  gap?: number;           // distance from video edge to tick start (px)
-  tickLength?: number;    // length of each tick (px)
-  baseColor?: string;     // gray default
-  glowColor?: string;     // green hint
+  spokes?: number;
+  gap?: number;
+  tickLength?: number;
+  baseColor?: string;
+  glowColor?: string;
 };
 
 export default function RegulaSpokeCrown({
@@ -48,13 +39,18 @@ export default function RegulaSpokeCrown({
   spokes = 100,
   gap = 12,
   tickLength = 20,
-  baseColor = "rgba(110,108,109,0.80)",     // gray
-  glowColor = "rgba(16,185,129,0.95)",      // emerald
+  baseColor = "rgba(110,108,109,0.80)",
+  glowColor = "rgba(16,185,129,0.95)",
 }: Props) {
+  // Geometry
+  const OUTER = circleSize + 2 * (gap + tickLength); // full svg box (DIAMETER)
   const rVideo = circleSize / 2;
-  const rInner = rVideo + gap;
-  const rOuter = rInner + tickLength;
-  const vb = rOuter + 10;
+  const rInner = rVideo + gap;            // ring radius
+  const rOuter = rInner + tickLength;     // tick end radius
+
+  // Make the parent decide pixel size; we render in a centered coordinate system.
+  // Center at (0,0) and draw symmetrically so it aligns with parent translate(-50%,-50%).
+  const viewBox = `${-OUTER / 2} ${-OUTER / 2} ${OUTER} ${OUTER}`;
 
   const angles = React.useMemo(
     () => Array.from({ length: spokes }, (_, i) => -90 + (i * 360) / spokes),
@@ -64,7 +60,7 @@ export default function RegulaSpokeCrown({
   const centerIdx = nearestIdx(angles, targetAngle);
 
   const hintCount = hintDirection === "STRAIGHT"
-    ? spokes                          // full ring green when straight
+    ? spokes
     : Math.max(1, Math.round(spokes * hintFraction));
 
   const glow = new Set<number>();
@@ -77,11 +73,22 @@ export default function RegulaSpokeCrown({
 
   return (
     <svg
-      width={vb * 2}
-      height={vb * 2}
-      viewBox={[-vb, -vb, vb * 2, vb * 2].join(" ")}
+      width="100%"
+      height="100%"
+      viewBox={viewBox}
+      preserveAspectRatio="xMidYMid meet"
       style={{ display: "block" }}
     >
+      {/* Base ring */}
+      <circle
+        cx={0} cy={0} r={rInner}
+        fill="none"
+        stroke={baseColor}
+        strokeWidth={2}
+        vectorEffect="non-scaling-stroke"
+      />
+
+      {/* Ticks */}
       {angles.map((ang, i) => {
         const { x1, y1, x2, y2 } = lineFor(ang, rInner, rOuter);
         const active = glow.has(i);
@@ -92,6 +99,7 @@ export default function RegulaSpokeCrown({
             stroke={active ? glowColor : baseColor}
             strokeWidth={active ? 3 : 2}
             strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
             style={{
               filter: active ? "drop-shadow(0 0 8px rgba(16,185,129,0.7))" : undefined,
               transition: "stroke 120ms, stroke-width 120ms, filter 120ms",

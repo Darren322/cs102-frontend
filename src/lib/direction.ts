@@ -15,7 +15,7 @@ export type Direction =
     | "NO_FACE";
 const PITCH_UP_THRESHOLD = 100;
 const PITCH_DOWN_THRESHOLD = 140;
-const YAW_RIGHT_THRESHOLD = 58;
+const YAW_RIGHT_THRESHOLD = 60;
 const YAW_LEFT_THRESHOLD = 95;
 
 const FLIP_YAW = false;
