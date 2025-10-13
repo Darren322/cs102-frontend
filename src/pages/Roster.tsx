@@ -190,16 +190,9 @@ export default function RostersPage() {
                 <Button
                   variant="outline"
                   onClick={() => setViewRoster(r)}
-                  className="flex-1 bg-blue-500/10 border-blue-500/20 text-blue-300 hover:bg-blue-500/20"
+                  className="flex-1 bg-blue-500/10 border-blue-500/20 text-blue-300 hover:bg-blue-500/20 rounded-2xl"
                 >
                   <Eye size={16} className="mr-1" /> View
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => deleteRoster(r.id)}
-                  className="bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20"
-                >
-                  <Trash2 size={16} />
                 </Button>
               </div>
             </CardContent>

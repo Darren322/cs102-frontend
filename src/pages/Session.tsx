@@ -180,10 +180,19 @@ export default function SessionsPage() {
 
 
   const filteredData = sessionsByUser.filter((sess) => {
-    if (statusFilter == "CREATED") { return sess.status == "CREATED" }
-    if (statusFilter == "ACTIVE") { return sess.status == "ACTIVE" }
-    if (statusFilter == "CLOSED") { return sess.status == "CLOSED" }
-    if (statusFilter == "all") { return sess.status !== "CLOSED" }
+  const matchesStatus =
+    statusFilter === "all"
+      ? sess.status !== "CLOSED"
+      : sess.status === statusFilter
+
+  const matchesSearch =
+    searchTerm.trim() === "" ||
+    sess.course?.courseName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    sess.course?.courseCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    sess.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    sess.sessionID?.toLowerCase().includes(searchTerm.toLowerCase())
+
+  return matchesStatus && matchesSearch
   })
 
   const [currentPage, setCurrentPage] = useState(1)
@@ -295,12 +304,11 @@ export default function SessionsPage() {
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <Filter size={18} className="text-slate-400" />
                     <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
                       <SelectTrigger className="w-[180px] bg-slate-800/50 border-slate-700/50 text-white rounded-2xl h-11">
                         <SelectValue placeholder="All Status" />
                       </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-slate-700 rounded-xl">
+                      <SelectContent className="bg-slate-800 border-slate-700 rounded-2xl">
                         <SelectItem value="all">All Status</SelectItem>
                         <SelectItem value="CREATED">Created</SelectItem>
                         <SelectItem value="ACTIVE">Active</SelectItem>
@@ -349,7 +357,7 @@ export default function SessionsPage() {
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        <div className="space-y-2.5 rounded-xl p-3">
+                        <div className="space-y-2.5 rounded-xl">
                           <div className="flex justify-between text-sm">
                             <span className="text-slate-400">Date of Session:</span>
                             <span className="text-white font-medium">{new Date(session.date).toLocaleDateString()}</span>

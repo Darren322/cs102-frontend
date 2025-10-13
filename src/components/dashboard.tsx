@@ -1,7 +1,7 @@
 // src/components/Live.tsx
 "use client"
 
-import { Play, Square, Edit3, Upload, Check, X, Users, XCircle, FileText, Clock } from "lucide-react"
+import { Play, Square, Edit3, Upload, Check, X, Users, XCircle, FileText, Clock, CircleDotDashed } from "lucide-react"
 import { useEffect, useState } from "react"
 import type { LiveProps } from "../components/utils/dashboard-types"
 import { useParams } from "react-router-dom";
@@ -118,7 +118,6 @@ export function Live({
   useEffect(() => {
     getAttendanceRecordForSession(p).then((res) => {
       setCurrentAttendanceRecords(res.data);
-      console.log('Success')
     }).catch((error) => {
       console.error(error);
     })
@@ -133,10 +132,7 @@ export function Live({
     })
   }, [p])
 
-
-  console.log(currentSessionDet)
   const [editingRows, setEditingRows] = useState<{ [id: string]: boolean }>({});
-
 
   const toggleEditRow = (id: string) => {
     setEditingRows(prev => ({
@@ -175,7 +171,6 @@ export function Live({
           )
         );
 
-        console.log(response)
       }).catch((error) => {
         console.error(error)
       })
@@ -192,24 +187,19 @@ export function Live({
   const [totalAbsent, setTotalAbsent] = useState(0)
 
   getTotalPresent(p).then((response) => {
-    console.log(response.data)
     setTotalPresent(response.data)
   })
   getTotalLate(p).then((response) => {
-    console.log(response.data)
     setTotalLate(response.data)
   })
 
   getTotalPending(p).then((response) => {
-    console.log(response.data)
     setTotalPending(response.data)
   })
   getTotalMedical(p).then((response) => {
-    console.log(response.data)
     setTotalMedical(response.data)
   })
   getTotalAbsent(p).then((response) => {
-    console.log(response.data)
     setTotalAbsent(response.data)
   })
 
@@ -218,15 +208,16 @@ export function Live({
     { label: 'Late', count: totalLate, icon: Clock, color: 'bg-yellow-500', bgColor: 'bg-yellow-500/10', borderColor: 'border-yellow-500/20' },
     { label: 'Absent', count: totalAbsent, icon: XCircle, color: 'bg-red-500', bgColor: 'bg-red-500/10', borderColor: 'border-red-500/20' },
     { label: 'MC', count: totalMedical, icon: FileText, color: 'bg-blue-500', bgColor: 'bg-blue-500/10', borderColor: 'border-blue-500/20' },
+    { label: 'Pending', count: totalPending, icon: CircleDotDashed, color: 'bg-slate-500', bgColor: 'bg-slate-500/10', borderColor: 'border-slate-500/20' },
   ];
+
+  console.log(currentSessionDet)
+
   return (
     <div
       className={cn(
         "relative w-full overflow-y-auto min-h-screen flex flex-col justify-start",
-        // radial gray background (slate → slate)
         "bg-[radial-gradient(ellipse_at_bottom,theme(colors.slate.900)_0%,theme(colors.slate.950)_100%)]",
-        // provide spacing so the gradient is visible around cards
-        // "p-4 md:p-6 lg:p-8"
         "w-auto",
         "flex flex-col justify-start min-h-screen"
 
@@ -235,13 +226,13 @@ export function Live({
       <div className="space-y-6">
 
         {sessionActive && (
-          <Card className="bg-slate-900/50 border-slate-800/50 rounded-2xl shadow-xl backdrop-blur-sm mx-8 mt-2">
+          <Card className="bg-slate-900/50 border-slate-800/50 rounded-2xl shadow-xl backdrop-blur-sm mx-8 mt-6">
             <CardHeader className="pb-3 pt-4 px-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <CardTitle className="text-lg">Active Session</CardTitle>
+                  <CardTitle className="text-lg">Course Name: {currentSessionDet.course.courseName} {currentSessionDet.course.courseCode}</CardTitle>
                   <CardDescription className="space-y-0.5">
-                    <p>Session ID: <span className="font-medium text-foreground">{currentSessionId}</span></p>
+                    <p>Session Date: <span className="font-medium text-foreground">{formatDate(currentSessionDet.date)}</span></p>
                     <p className="text-sm">
                       Mode: <span className="font-medium">{recognitionMode?.toUpperCase()}</span>
                     </p>
@@ -272,14 +263,6 @@ export function Live({
                     </button>
                   )}
 
-                  <Button
-                    onClick={() => setShowManualEntry(!showManualEntry)}
-                    variant="secondary"
-                    className="gap-2"
-                  >
-                    <Edit3 size={18} />
-                    Manual Entry
-                  </Button>
 
                   <Button onClick={stopSession} variant="outline">
                     End Session
@@ -295,11 +278,11 @@ export function Live({
             </CardHeader>
 
             <CardContent className="space-y-6">
-              <div className="flex flex-col lg:flex-row gap-6 w-full max-w-5xl">
-                <Card className="bg-muted/30 flex-1">
+              <div className="flex flex-col lg:flex-row gap-6 w-full">
+                <Card className="bg-muted/30 flex-1 lg:basis-[70%] rounded-2xl">
                   <CardContent className="p-4">
                     {recognitionMode === "live" ? (
-                      <div className="relative">
+                      <div className="relative w-full">
                         <video
                           ref={videoRef}
                           width={WIDTH}
@@ -308,7 +291,7 @@ export function Live({
                           muted
                           playsInline
                           className={cn(
-                            "rounded-md border border-border",
+                            "rounded-md border border-border w-full",
                             running ? "hidden" : "block"
                           )}
                         />
@@ -317,7 +300,7 @@ export function Live({
                           width={WIDTH}
                           height={HEIGHT}
                           className={cn(
-                            "rounded-md border border-border",
+                            "rounded-md border border-border w-full",
                             running ? "block" : "hidden"
                           )}
                           alt="Recognition feed"
@@ -346,7 +329,7 @@ export function Live({
                 </Card>
 
                 {/* Right: Present list */}
-                <Card className="w-full lg:w-1/3 bg-muted/30 flex-1">
+                <Card className="w-full lg:w-1/3 bg-muted/30 flex-1 lg:basis-[40%] rounded-2xl">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base">Currently Present</CardTitle>
                   </CardHeader>
@@ -376,39 +359,6 @@ export function Live({
                 </Card>
               </div>
 
-              {showManualEntry && (
-                <Card className="border-border/70 bg-yellow-50/10">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base">Manual Attendance Entry</CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Input
-                      placeholder="Student ID"
-                      value={manualStudentId}
-                      onChange={(e) => setManualStudentId(e.target.value)}
-                    />
-                    <Input
-                      placeholder="Remarks (optional)"
-                      value={manualRemarks}
-                      onChange={(e) => setManualRemarks(e.target.value)}
-                    />
-                    <div className="flex gap-2">
-                      <Button onClick={handleLocalAdd} className="gap-1">
-                        <Check size={18} />
-                        Add
-                      </Button>
-                      <Button
-                        onClick={() => setShowManualEntry(false)}
-                        variant="outline"
-                        className="gap-1"
-                      >
-                        <X size={18} />
-                        Cancel
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
             </CardContent>
           </Card>
         )}
@@ -423,9 +373,19 @@ export function Live({
             </CardDescription>
 
             <CardDescription className="text-gray-300">
+              {currentSessionDet && currentSessionDet.course && (
+                <>
+                  <span>Current Status: </span>
+                  <span className="font-bold">{stringFormatter(currentSessionDet.status)}</span>
+                </>
+
+              )}
+            </CardDescription>
+
+            <CardDescription className="text-gray-300">
 
             </CardDescription>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-2">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-2">
               {statCards.map((stat) => {
                 const Icon = stat.icon;
 
@@ -435,7 +395,7 @@ export function Live({
                     className={`${stat.bgColor} ${stat.borderColor} border rounded-2xl p-5 transition-all hover:scale-105`}
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <div className={`${stat.color} p-2 rounded-lg`}>
+                      <div className={`${stat.color} p-2 rounded-2xl`}>
                         <Icon className="w-5 h-5 text-white" />
                       </div>
                       <span className="text-2xl font-bold">{stat.count}</span>
@@ -457,6 +417,7 @@ export function Live({
                 <TableHeader>
                   <TableRow className="bg-gradient-to-r from-slate-800/60 to-slate-900/50 border-b border-slate-800/50">
                     <TableHead className="text-slate-300 font-medium pl-6">Student ID</TableHead>
+                    <TableHead className="text-slate-300 font-medium pl-6">Student Name</TableHead>
                     <TableHead className="text-slate-300 font-medium">Timestamp</TableHead>
                     <TableHead className="text-slate-300 font-medium">Confidence</TableHead>
                     <TableHead className="text-slate-300 font-medium">Marking Type</TableHead>
@@ -483,6 +444,7 @@ export function Live({
                         )}
                       >
                         <TableCell className="font-medium text-slate-300 pl-6">{record.studentId}</TableCell>
+                        <TableCell className="font-medium text-slate-300 pl-6">{record.student.name}</TableCell>
 
                         <TableCell className="text-slate-400">
                           {new Date(record.timestamp).toLocaleString()}
@@ -511,8 +473,8 @@ export function Live({
                             <Select
                               value={record.method?.toLowerCase() ?? ""}
                               onValueChange={(v) =>
-                                setCurrentAttendanceRecords((prev) =>
-                                  prev.map((r) =>
+                                setCurrentAttendanceRecords((prev:any) =>
+                                  prev.map((r:any) =>
                                     r.attendanceId === record.attendanceId ? { ...r, method: v } : r
                                   )
                                 )
@@ -530,10 +492,12 @@ export function Live({
                             <Badge
                               variant="outline"
                               className={cn(
-                                "capitalize rounded-full px-3 py-1 border",
-                                record.method === "AUTO"
-                                  ? "border-blue-500/30 text-blue-400"
-                                  : "border-purple-500/30 text-purple-400"
+                                "capitalize rounded-full px-3 py-1 border font-medium",
+                                record.method === "AUTOMATIC"
+                                  ? "border-blue-500/30 text-blue-400 bg-blue-500/10"
+                                  : record.method === "BATCH_AUTO"
+                                    ? "border-amber-500/30 text-amber-400 bg-amber-500/10"
+                                    : "border-purple-500/30 text-purple-400 bg-purple-500/10"
                               )}
                             >
                               {stringFormatter(record.method)}
@@ -572,7 +536,11 @@ export function Live({
                                   ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
                                   : record.status === "LATE"
                                     ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/30"
-                                    : "bg-red-500/10 text-red-400 border-red-500/30"
+                                    : record.status === "ABSENT"
+                                      ? "bg-red-500/10 text-red-400 border-red-500/30"
+                                      : record.status === "MEDICAL"
+                                        ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
+                                        : "bg-slate-500/10 text-slate-400 border-slate-500/30" // Pending or default
                               )}
                             >
                               {stringFormatter(record.status)}

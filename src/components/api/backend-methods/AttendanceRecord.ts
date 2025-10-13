@@ -86,3 +86,4 @@ export function batchMark(payload:any,sessionID:any){
     //http://localhost:8081/api/attendance/batch/mark-all/6c3e6146-fa16-42b0-b112-ca979b9ea052
 }
 
+// export function 

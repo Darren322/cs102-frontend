@@ -35,7 +35,7 @@ export default function DashboardPage() {
   useEffect(() => {
     getSessionByCreator().then((response) => {
       setUsrSession(response.data)
-      const activeSessions = response.data.filter((singleSess: any) => { singleSess.active == true })
+      const activeSessions = response.data.filter((singleSess: any) => { return singleSess.active == true })
       setLengthActive(activeSessions.length)
       const today = new Date();
       today.setHours(0, 0, 0, 0); // normalize to midnight
@@ -50,6 +50,11 @@ export default function DashboardPage() {
         let cur = new Date(`${sess.date}T00:00:00`);
         return cur > today;
       })
+      afterDates.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+
+      dates.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
       console.log(dates)
       setBeforeSession(dates)
       setAfterSession(afterDates)
@@ -95,20 +100,6 @@ export default function DashboardPage() {
                   month: "long",
                   day: "numeric",
                 })}
-
-                <div className="flex justify-end">
-                  <Button
-                    className="
-              rounded-full h-11 px-6 font-medium
-              bg-blue-500/20 text-blue-300 border border-blue-500/30
-              backdrop-blur-md transition-all
-              hover:bg-blue-500/30 hover:text-blue-100 hover:border-blue-400/50
-              shadow-sm hover:shadow-blue-500/20
-            "
-                  >
-                    View Reports
-                  </Button>
-                </div>
               </div>
             </div>
           </CardHeader>
@@ -160,7 +151,9 @@ export default function DashboardPage() {
                     >
                       <div>
                         <p className="font-medium text-white">{s.courseName}</p>
-                        <p className="text-sm text-slate-400">{s.course.courseName} • {s.date}</p>
+                        <p className="text-sm text-slate-400">{s.course.courseName}</p>
+                        <p className="text-sm text-slate-300">{s.date}</p>
+
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="text-sm text-slate-400">{s.attendance}</span>
@@ -172,11 +165,12 @@ export default function DashboardPage() {
                               ? "bg-green-500/10 text-green-400 border-green-500/20"
                               : s.status === "CLOSED"
                                 ? "bg-red-500/10 text-red-400 border-red-500/20"
-                                : "bg-slate-700/50 text-slate-300 border-slate-600/50" 
+                                : "bg-slate-700/50 text-slate-300 border-slate-600/50"
                           )}
                         >
                           {stringFormatter(s.status)}
                         </Badge>
+                        
                       </div>
                     </div>
                   </Link>
@@ -199,12 +193,24 @@ export default function DashboardPage() {
                     >
                       <div>
                         <p className="font-medium text-white">{s.courseName}</p>
-                        <p className="text-sm text-slate-400">{s.course.courseName} • {s.date}</p>
+                        <p className="text-sm text-slate-400">{s.course.courseName}</p>
+                        <p className="text-sm text-slate-300">{s.date}</p>
 
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-medium text-white">{s.students.length} students</p>
-
+                                                <Badge
+                          variant="outline"
+                          className={cn(
+                            "capitalize rounded-full px-3 py-1 font-medium border",
+                            s.status === "ACTIVE"
+                              ? "bg-green-500/10 text-green-400 border-green-500/20"
+                              : s.status === "CLOSED"
+                                ? "bg-red-500/10 text-red-400 border-red-500/20"
+                                : "bg-slate-700/50 text-slate-300 border-slate-600/50"
+                          )}
+                        >
+                          {stringFormatter(s.status)}
+                        </Badge>
                       </div>
                     </div>
                   </Link>

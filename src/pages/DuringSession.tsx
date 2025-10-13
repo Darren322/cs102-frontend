@@ -1,24 +1,26 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, Upload, Plus, SettingsIcon, Users, Clock, User, Highlighter } from "lucide-react";
+import { Camera, Upload, Plus, SettingsIcon, Users, Clock, User, Highlighter, File, FileSpreadsheet } from "lucide-react";
 import { Live } from "../components/dashboard";
 import { Session } from "../components/sessions";
 import { Settings } from "../components/settings";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useParams } from "react-router-dom";
-import { getCurrentSession } from "@/components/api/backend-methods/Sessions";
+import { activateCourse, closeCourse, getCurrentSession } from "@/components/api/backend-methods/Sessions";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { batchMark } from "@/components/api/backend-methods/AttendanceRecord";
 import { toast } from "sonner";
+import { csvExport, pdfExport } from "@/components/api/backend-methods/pdf-csv";
 
 // Types for events and attendance records
 type PresentEvent = {
@@ -93,6 +95,7 @@ export default function SmartAttendanceSystem() {
   const WIDTH = 640;
   const HEIGHT = 480;
   const WS_URL = "ws://localhost:8081/ws/live-scan";
+  const detectionsRef = useRef<any[]>([]);
 
   // Generate session ID
   const generateSessionId = () => {
@@ -248,7 +251,16 @@ export default function SmartAttendanceSystem() {
     ws.binaryType = "blob";
     wsRef.current = ws;
 
-    ws.onopen = () => setErr("");
+
+    ws.onopen = () => {
+      const intervalId = setInterval(() => {
+        // 1️⃣ ask backend to run detection
+        ws.send(JSON.stringify({ type: "detect_request" }));
+
+      }, 5000);
+      console.log("🔁 Auto-mark + detection interval started");
+    };
+
     ws.onerror = () => setErr("WebSocket error");
     ws.onclose = () => { };
 
@@ -259,8 +271,8 @@ export default function SmartAttendanceSystem() {
     }, 1000) as unknown as number;
 
     ws.onmessage = (ev) => {
-      // If message is a JPEG binary frame from server
       if (typeof ev.data !== "string") {
+        console.log(ev.data)
         recvCountRef.current += 1; // count received frames
         const url = URL.createObjectURL(ev.data as Blob);
         const imgEl = serverImgRef.current;
@@ -271,11 +283,13 @@ export default function SmartAttendanceSystem() {
         }
         return;
       }
-
-      // If the message is JSON (attendance or detections event)
       try {
         const msg = JSON.parse(ev.data) as PresentEvent | DetsMsg | any;
-
+        //this is what we will send to backend.
+        console.log(msg);
+        if (msg.type === "dets" && Array.isArray(msg.dets)) {
+          detectionsRef.current.push(...msg.dets);
+        }
         // Handle attendance events
         if (msg.type === "present" || msg.type === "left") {
           const name = (msg as PresentEvent).name || (msg as any).studentId || "Unknown";
@@ -451,11 +465,13 @@ export default function SmartAttendanceSystem() {
   const id = useParams().id;
   console.log(id)
   const [isCurrentClosed, setIsCurrentClosed] = useState(false)
+  const [isCurrentActive, setIsCurrentActive] = useState(false)
 
   useEffect(() => {
     getCurrentSession(id).then((response) => {
       console.log(response.data.active)
       console.log(response.data.closed)
+      setIsCurrentActive(response.data.active)
       setIsCurrentClosed(response.data.closed)
     }).catch((err) => {
       console.error(err)
@@ -480,6 +496,78 @@ export default function SmartAttendanceSystem() {
     })
   }
   console.log(isCurrentClosed)
+
+  const handleActive = () => {
+    if (!id) return;
+
+    activateCourse(id)
+      .then((response) => {
+        toast.success("Successfully set to Active");
+        setIsCurrentActive(true); // ✅ instantly reflect state change
+      })
+      .catch(() => {
+        toast.error("Unable to set active.");
+      });
+  };
+
+  const closeSession = () => {
+    if (!id) return;
+
+    closeCourse(id).then((response) => {
+      toast.success("Successfully set to Closed");
+    }).catch((error) => {
+      toast.error("Unable to set to close.")
+    })
+  }
+  //Able to get unique detections alr. DONT MODIFY HERE
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (detectionsRef.current.length > 0) {
+        // ✅ Deduplicate by name (only keep one detection per person)
+        const unique = Object.values(
+          detectionsRef.current.reduce((acc, det) => {
+            acc[det.name] = det; // overwrite older ones by name
+            return acc;
+          }, {} as Record<string, any>)
+        );
+
+        console.log("🕔 Flushing unique detections:", unique);
+
+        // clear buffer after flush
+        detectionsRef.current = [];
+      } else {
+        console.log("🕔 No new detections yet...");
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+
+  const exportPDF = ()=>{
+    pdfExport().then((response)=>{
+      console.log(response)
+      setConfirmationDialog(false)
+      toast.success('Sent PDF Successfully and emailed.')
+    }).catch((error)=>{
+      console.error(error)
+      setConfirmationDialog(false)
+      toast.error('PDF did not manage to send and emailed.')
+    })
+  }
+
+  const exportCSV = () =>{
+    csvExport().then((response)=>{
+      console.log(response)
+      setConfirmationDialog(false)
+      toast.success('Sent CSV Successfully and emailed.')
+    }).catch((error)=>{
+      console.error(error)
+      setConfirmationDialog(false)
+      toast.error('CSV did not manage to send and emailed.')
+    })
+  }
+  const [confirmationDialog, setConfirmationDialog] = useState(false)
   return (
     <div className="flex h-screen bg-slate-950 text-white">
 
@@ -496,57 +584,66 @@ export default function SmartAttendanceSystem() {
                 <p className="text-gray-300 mt-1">{curText?.text}</p>
               </div>
 
-              {!isCurrentClosed && (
-                <div className="grid grid-cols-2 gap-3">
-                  <Button
-                    onClick={() => startSession("live")}
-                    className="bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 transition-all rounded-2xl px-4 py-5"
-                  >
-                    <Camera size={18} className="mr-2" />
-                    Live Recognition
-                  </Button>
-                  <Button
-                    onClick={() => startSession("upload")}
-                    className="bg-green-500/10 hover:bg-green-500/20 border-green-500/30 text-green-300 transition-all rounded-2xl px-4 py-5" 
-                  >
-                    <Upload size={18} className="mr-2" />
-                    Upload Image
-                  </Button>
-                  {
+              {
+                isCurrentClosed ? (
+                  // Case 1: closed
+                  <div className="grid grid-cols-1 gap-3">
+                    <Button
+                      onClick={() => setConfirmationDialog(true)}
+                      className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/30 
+          font-medium rounded-lg px-4 py-2 backdrop-blur-sm shadow-sm transition-all"
+                    >
+                      <Upload size={18} className="mr-2" />
+                      Export
+                    </Button>
+                  </div>
+                ) : !isCurrentActive ? (
+                  // Case 2: not closed & not active
+                  <div className="grid grid-cols-1 gap-3">
+                    <Button
+                      onClick={() => handleActive()}
+                      className="bg-violet-500/20 hover:bg-violet-500/30 text-violet-300 border border-violet-400/40 
+          font-semibold rounded-2xl px-4 py-5 transition-all"
+                    >
+                      <SettingsIcon size={18} className="mr-2" />
+                      Set to Active
+                    </Button>
+                  </div>
+                ) : (
+                  // Case 3: active & not closed
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button
+                      onClick={() => startSession("live")}
+                      className="bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 transition-all rounded-2xl px-4 py-5"
+                    >
+                      <Camera size={18} className="mr-2" />
+                      Live Recognition
+                    </Button>
+                    <Button
+                      onClick={() => startSession("upload")}
+                      className="bg-green-500/10 hover:bg-green-500/20 border-green-500/30 text-green-300 transition-all rounded-2xl px-4 py-5"
+                    >
+                      <Upload size={18} className="mr-2" />
+                      Upload Image
+                    </Button>
                     <Button
                       onClick={() => setShowBatchDialog(true)}
-                      className="
-                        bg-amber-500/20 
-                        hover:bg-amber-500/30 
-                        text-amber-300 
-                        font-semibold 
-                        px-4 py-5 
-                        border border-amber-400/40 
-                        backdrop-blur-sm 
-                        shadow-sm 
-                        transition-all
-                        rounded-2xl
-                      "
+                      className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-semibold px-4 py-5 border border-amber-400/40 backdrop-blur-sm 
+          shadow-sm transition-all rounded-2xl"
                     >
                       <Highlighter size={18} className="mr-2" />
                       Batch Mark
                     </Button>
-                  }
-                </div>
-              )}
-              {
-                isCurrentClosed && (
-                  <div className="grid grid-cols-1 gap-3">
-                                      <Button
-                    onClick={() => startSession("upload")}
-                    className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/30 
-             font-medium rounded-lg px-4 py-2 backdrop-blur-sm shadow-sm transition-all"
-                  >
-                    <Upload size={18} className="mr-2" />
-                    Export
-                  </Button>
-                  </div>
 
+                    <Button
+                      onClick={() => closeSession()}
+                      className="bg-red-500/20 hover:bg-red-500/30 text-red-300 font-semibold px-4 py-5 border border-red-400/40 backdrop-blur-sm 
+          shadow-sm transition-all rounded-2xl"
+                    >
+                      <Highlighter size={18} className="mr-2" />
+                      Close Session
+                    </Button>
+                  </div>
                 )
               }
 
@@ -581,8 +678,8 @@ export default function SmartAttendanceSystem() {
                 updateRecord={updateRecord}
                 setEditingRecord={setEditingRecord}
                 fps={fps}
-                recvFps={recvFps} 
-                setActiveTab={setActiveTab} 
+                recvFps={recvFps}
+                setActiveTab={setActiveTab}
               />
             )}
 
@@ -659,6 +756,50 @@ export default function SmartAttendanceSystem() {
               className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/40"
             >
               Confirm Batch Mark
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmationDialog} onOpenChange={setConfirmationDialog}>
+        <DialogContent className="bg-slate-900 border border-slate-700 text-white rounded-2xl shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-medium text-slate-300">
+              Choose your method of exporting.
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex space-x-4">
+            <div className="w-[50%]">
+              <Button
+                className="w-full bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-400/40 
+               rounded-2xl px-4 py-5 backdrop-blur-sm shadow-sm transition-all flex items-center justify-center gap-2"
+               onClick={()=>{exportPDF}}
+              >
+                <File className="w-4 h-4" />
+                PDF
+              </Button>
+            </div>
+            <div className="w-[50%]">
+              <Button
+                className="w-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 
+               rounded-2xl px-4 py-5 backdrop-blur-sm shadow-sm transition-all flex items-center justify-center gap-2"
+               onClick={()=>{exportCSV}}
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                CSV
+              </Button>
+            </div>
+
+          </div>
+
+          <DialogFooter className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              className="border border-slate-700 text-gray-300 hover:bg-slate-800 rounded-2xl"
+              onClick={() => setConfirmationDialog(false)}
+            >
+              Cancel
             </Button>
           </DialogFooter>
         </DialogContent>

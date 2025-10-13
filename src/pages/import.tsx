@@ -27,6 +27,7 @@ export default function App() {
       body: form,
     });
     const json = (await res.json()) as ScanResponseItem[];
+    console.log(json)
    
     setDets(json);
   } finally {
