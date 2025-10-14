@@ -54,7 +54,15 @@ export function LoginForm({
       storage.setItem("username", data.username ?? email);
       storage.setItem("role", data.role ?? role);
 
-      navigate("/dashboard");
+      if(data.role == "STAFF"){
+        navigate("/dashboard");
+      }else{
+        if(data.role == "STUDENT"){
+          navigate("/enrolStudent")
+        }
+      }
+
+      
     } catch (err) {
       console.error("Login error:", err);
       setErrorMsg("Unable to reach server at " + API_URL);

@@ -13,6 +13,7 @@ import RegisterPage from "./pages/register";
 import ProtectedLayout from "./pages/protectedlayout";
 import Account from "./pages/Account";
 import TestApp  from './pages/import';
+import EnrolStudent  from "./pages/EnrolStudent";
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
           <Route path="/attendancedetails/:id" element={<AttendanceDetails />} />
           <Route path="/sessions" element={<SessionsPage />} />
           <Route path="importTest" element={<TestApp/>}/>
+          <Route path="/enrolStudent" element={<EnrolStudent/>}/>
          
 
         </Route>

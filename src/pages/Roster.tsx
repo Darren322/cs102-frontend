@@ -127,6 +127,12 @@ export default function RostersPage() {
     }
   }, [currentSelected])
 
+  const filteredRosters = rosters.filter((r) =>
+  [r.courseName, r.courseCode, r.courseDesc].some((f) =>
+    f?.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+)
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 py-12 px-0 w-[100%]">
       {/* Floating Header */}
@@ -167,7 +173,7 @@ export default function RostersPage() {
 
       {/* Roster Grid */}
       <div className="w-[95%] mx-auto grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-        {rosters.map((r) => (
+        {filteredRosters.map((r) => (
           <Card
             key={r.id}
             className="rounded-2xl border border-slate-800/60 bg-slate-900/50 backdrop-blur-sm hover:bg-slate-900/70 hover:shadow-lg hover:shadow-blue-500/10 hover:scale-[1.02] transition-all duration-300"
@@ -199,7 +205,7 @@ export default function RostersPage() {
           </Card>
         ))}
 
-        {rosters.length === 0 && (
+        {filteredRosters.length === 0 && (
           <div className="col-span-full text-center text-slate-400 py-20">
             <Users size={48} className="mx-auto mb-3 opacity-50" />
             <p>No rosters found</p>

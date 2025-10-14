@@ -545,7 +545,7 @@ export default function SmartAttendanceSystem() {
 
 
   const exportPDF = ()=>{
-    pdfExport().then((response)=>{
+    pdfExport(id).then((response)=>{
       console.log(response)
       setConfirmationDialog(false)
       toast.success('Sent PDF Successfully and emailed.')
@@ -557,7 +557,7 @@ export default function SmartAttendanceSystem() {
   }
 
   const exportCSV = () =>{
-    csvExport().then((response)=>{
+    csvExport(id).then((response)=>{
       console.log(response)
       setConfirmationDialog(false)
       toast.success('Sent CSV Successfully and emailed.')
@@ -774,7 +774,7 @@ export default function SmartAttendanceSystem() {
               <Button
                 className="w-full bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-400/40 
                rounded-2xl px-4 py-5 backdrop-blur-sm shadow-sm transition-all flex items-center justify-center gap-2"
-               onClick={()=>{exportPDF}}
+               onClick={()=>{exportPDF()}}
               >
                 <File className="w-4 h-4" />
                 PDF
@@ -784,7 +784,7 @@ export default function SmartAttendanceSystem() {
               <Button
                 className="w-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 
                rounded-2xl px-4 py-5 backdrop-blur-sm shadow-sm transition-all flex items-center justify-center gap-2"
-               onClick={()=>{exportCSV}}
+               onClick={()=>{exportCSV()}}
               >
                 <FileSpreadsheet className="w-4 h-4" />
                 CSV
