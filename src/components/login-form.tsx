@@ -3,6 +3,8 @@ import { useNavigate, Link } from "react-router-dom";
 import { Eye, EyeOff, Lock, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { addNewStudent } from "@/components/api/backend-methods/Student";
+import type { StudentPayload } from "@/components/api/backend-methods/Student";
 import {
   Field,
   FieldGroup,
@@ -27,6 +29,8 @@ export function LoginForm({
   const [remember, setRemember] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
+  const [pendingEnrollMsg, setPendingEnrollMsg] = React.useState<string | null>(null);
+  const [pendingEnrollIsError, setPendingEnrollIsError] = React.useState(false);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +45,7 @@ export function LoginForm({
         body: JSON.stringify({ email, password, role }),
       });
 
-      const data = await res.json().catch(() => ({} as any));
+  const data = await res.json().catch(() => ({} as unknown as { success?: boolean; token?: string; message?: string; username?: string; role?: string }));
       if (!res.ok || !data?.success) {
         setErrorMsg(data?.message || "Invalid email or password");
         return;
@@ -50,15 +54,61 @@ export function LoginForm({
       const storage = localStorage
       if (data.token) {
         storage.setItem("token", data.token);
+        // If there's a pending student payload (from registration), try to enroll now
+        try {
+          const pendingJson = sessionStorage.getItem("pendingStudent");
+          if (pendingJson) {
+            const pending = JSON.parse(pendingJson) as StudentPayload;
+            // debug: safely decode the JWT and log subject/email for server lookup debugging
+            try {
+              const parts = data.token.split('.');
+              if (parts.length === 3) {
+                const payload = JSON.parse(atob(parts[1]));
+                console.log('DEBUG: post-login token subject/email', { sub: payload?.sub, email: payload?.email || payload?.email_address || payload?.preferred_username });
+              } else {
+                console.warn('DEBUG: unexpected token format when decoding subject');
+              }
+            } catch (e) {
+              console.warn('DEBUG: failed to decode token for logging', e);
+            }
+            // call addNewStudent with token
+            try {
+              const studentRes = await addNewStudent(pending, data.token);
+              if (studentRes.status >= 200 && studentRes.status < 300) {
+                // success -> clear pending and persist studentId
+                sessionStorage.removeItem("pendingStudent");
+                if (pending.studentId) sessionStorage.setItem("studentId", pending.studentId);
+                setPendingEnrollIsError(false);
+                setPendingEnrollMsg("Student record created successfully.");
+              } else {
+                console.warn("Post-login student enroll returned non-2xx", studentRes.status, studentRes.data);
+                setPendingEnrollIsError(true);
+                setPendingEnrollMsg(studentRes?.data?.message || `Student enroll failed (${studentRes.status})`);
+              }
+            } catch (err) {
+              console.warn("Failed to enroll pending student after login", err);
+              setPendingEnrollIsError(true);
+              setPendingEnrollMsg("Failed to create Student record. You can retry from your profile.");
+            }
+          }
+        } catch (err) {
+          console.warn("Error handling pendingStudent", err);
+        }
       }
       storage.setItem("username", data.username ?? email);
       storage.setItem("role", data.role ?? role);
 
       if(data.role == "STAFF"){
+        // small delay to allow pending message to display if any
         navigate("/dashboard");
       }else{
         if(data.role == "STUDENT"){
-          navigate("/enrolStudent")
+          // if we set a pending enroll message, show it briefly before redirecting
+          if (pendingEnrollMsg) {
+            setTimeout(() => navigate("/enrolStudent"), 900);
+          } else {
+            navigate("/enrolStudent");
+          }
         }
       }
 
@@ -90,6 +140,11 @@ export function LoginForm({
         {errorMsg && (
           <div className="rounded-lg border border-red-600/40 bg-red-600/10 px-4 py-3 text-sm text-red-300">
             {errorMsg}
+          </div>
+        )}
+        {pendingEnrollMsg && (
+          <div className={`rounded-lg border px-4 py-3 text-sm ${pendingEnrollIsError ? 'border-red-600/40 bg-red-600/10 text-red-300' : 'border-emerald-600/40 bg-emerald-600/10 text-emerald-300'}`}>
+            {pendingEnrollMsg}
           </div>
         )}
 

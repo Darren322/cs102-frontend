@@ -29,6 +29,10 @@ export default function EnrolPage() {
     useEffect(() => {
         const storedEmail = localStorage.getItem("userEmail") || ""
         setFormData((prev) => ({ ...prev, email: storedEmail }))
+        const storedStudent = sessionStorage.getItem("studentId") || ""
+        if (storedStudent) {
+            setFormData((prev) => ({ ...prev, studentId: storedStudent }))
+        }
     }, [])
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -150,21 +154,16 @@ export default function EnrolPage() {
 
                             {/* Row 1 */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* studentId */}
+                                {/* studentId (read-only) */}
                                 <div className="space-y-2">
-                                    <Label htmlFor="studentId">
-                                        Student ID <span className="text-destructive">*</span>
+                                    <Label>
+                                        Student ID
                                     </Label>
-                                    <Input
-                                        id="studentId"
-                                        name="studentId"
-                                        placeholder="S12345678"
-                                        value={formData.studentId}
-                                        onChange={handleChange}
-                                        required
-                                        className="bg-background"
-                                    />
-                                    <p className="text-sm text-muted-foreground">Format: S followed by 8 digits</p>
+                                    {formData.studentId ? (
+                                        <div className="px-3 py-2 bg-slate-900 text-slate-200 rounded-md">{formData.studentId}</div>
+                                    ) : (
+                                        <div className="px-3 py-2 bg-yellow-900/20 text-yellow-300 rounded-md">Student ID not set. Please add your Student ID in your profile settings.</div>
+                                    )}
                                 </div>
 
                                 {/* course */}
