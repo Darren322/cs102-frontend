@@ -468,16 +468,19 @@ export function Live({
                           </div>
                         </TableCell>
 
+
                         <TableCell>
                           <Badge
                             variant="outline"
                             className={cn(
                               "capitalize rounded-full px-3 py-1 border font-medium",
-                              record.method === "AUTOMATIC"
+                              record.method?.toUpperCase() === "AUTOMATIC"
                                 ? "border-blue-500/30 text-blue-400 bg-blue-500/10"
-                                : record.method === "BATCH_AUTO"
+                                : record.method?.toUpperCase() === "BATCH_AUTO"
                                   ? "border-amber-500/30 text-amber-400 bg-amber-500/10"
-                                  : "border-purple-500/30 text-purple-400 bg-purple-500/10"
+                                  : record.method?.toUpperCase() === "MANUAL"
+                                    ? "border-purple-500/30 text-purple-400 bg-purple-500/10"
+                                    : "border-slate-500/30 text-slate-400 bg-slate-500/10"
                             )}
                           >
                             {stringFormatter(record.method)}
