@@ -6,7 +6,9 @@ export function ProtectedRoute({ roles }: { roles?: string[] }) {
   if (!isAuthed()) return <Navigate to="/login" replace />;
   if (roles?.length) {
     const u = getUser();
+  
     if (!u || !u.role || !roles.includes(u.role)) {
+      
       return <Navigate to="/dashboard" replace />;
     }
   }

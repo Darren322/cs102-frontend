@@ -117,6 +117,9 @@ export default function EnrolPage() {
             addCourse()
         }
     }
+    const enrolStudent = () =>{
+        console.log('enroled')
+    }
 
 
 
@@ -135,9 +138,9 @@ export default function EnrolPage() {
     console.log(allCourses)
 
     return (
-        <div className="min-h-screen bg-[#020617] mt-14 ml-4 rounded-2xl px-auto w-full">
-            <div className="mx-auto px-auto max-w-7xl">
-                <Card className="border-0 rounded-2xl">
+        <div className="min-h-screen bg-[#020617] mt-14 rounded-2xl px-auto items-center ml-auto mr-auto">
+            <div className="mx-auto px-auto items-center ml-auto mr-auto">
+                <Card className="border-0 rounded-2xl w-[70%]">
                     <CardHeader>
                         <CardTitle className="text-2xl">Enrol for Class</CardTitle>
                         <CardDescription>Enrol yourself to a module</CardDescription>
@@ -164,77 +167,6 @@ export default function EnrolPage() {
                                     <p className="text-sm text-muted-foreground">Format: S followed by 8 digits</p>
                                 </div>
 
-                                {/* name */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="name">
-                                        Full Name <span className="text-destructive">*</span>
-                                    </Label>
-                                    <Input
-                                        id="name"
-                                        name="name"
-                                        placeholder="Nicholas Tan"
-                                        value={formData.name}
-                                        onChange={handleChange}
-                                        required
-                                        className="bg-background"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Row 2 */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* username */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="username">
-                                        Username <span className="text-muted-foreground">(Optional)</span>
-                                    </Label>
-                                    <Input
-                                        id="username"
-                                        name="username"
-                                        placeholder="nick"
-                                        value={formData.username}
-                                        onChange={handleChange}
-                                        className="bg-background"
-                                    />
-                                </div>
-
-                                {/* email */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="email">Email</Label>
-                                    <Input
-                                        id="email"
-                                        name="email"
-                                        type="email"
-                                        placeholder="nick@email.com"
-                                        value={localStorage['username']}
-                                        onChange={handleChange}
-                                        disabled
-                                        className="bg-muted"
-                                    />
-                                    <p className="text-sm text-muted-foreground">Email is retrieved from your account</p>
-                                </div>
-                            </div>
-
-                            {/* Row 3 */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* phone */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="phone">
-                                        Phone Number <span className="text-destructive">*</span>
-                                    </Label>
-                                    <Input
-                                        id="phone"
-                                        name="phone"
-                                        placeholder="91234567"
-                                        value={formData.phone}
-                                        onChange={handleChange}
-                                        required
-                                        maxLength={8}
-                                        className="bg-background"
-                                    />
-                                    <p className="text-sm text-muted-foreground">8-digit phone number</p>
-                                </div>
-
                                 {/* course */}
                                 <div className="space-y-2">
                                     <Label htmlFor="course">
@@ -245,7 +177,7 @@ export default function EnrolPage() {
                                             <SelectValue placeholder="Select a course" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {allCourses.map((course : any) => (
+                                            {allCourses.map((course: any) => (
                                                 <SelectItem key={course} value={course}>
                                                     {course}
                                                 </SelectItem>
@@ -255,27 +187,14 @@ export default function EnrolPage() {
                                 </div>
                             </div>
 
+
+
+
+
                             {/* buttons stay as-is */}
                             <div className="flex gap-4 pt-4">
-                                <Button type="submit" className="flex-1">
+                                <Button type="submit" className="" onClick={()=>{enrolStudent()}}>
                                     Enrol Student
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => {
-                                        setFormData({
-                                            studentId: "",
-                                            username: "",
-                                            name: "",
-                                            email: formData.email,
-                                            phone: "",
-                                            faceData: "",
-                                        })
-                                        setCourses([])
-                                    }}
-                                >
-                                    Clear Form
                                 </Button>
                             </div>
 

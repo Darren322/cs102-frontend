@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { batchMark } from "@/components/api/backend-methods/AttendanceRecord";
 import { toast } from "sonner";
 import { csvExport, pdfExport } from "@/components/api/backend-methods/pdf-csv";
+import { automaticMark } from "@/components/api/backend-methods/AttendanceRecord";
 
 // Types for events and attendance records
 type PresentEvent = {
@@ -85,7 +86,7 @@ export default function SmartAttendanceSystem() {
   const [fps, setFps] = useState(0);            // frames sent per second (camera -> backend)
   const frameCountRef = useRef(0);
   const fpsTimerRef = useRef<number | null>(null);
-const id = useParams().id;
+  const id = useParams().id;
   // (Optional) received FPS if you also want to show server->client stream rate
   const [recvFps, setRecvFps] = useState(0);
   const recvCountRef = useRef(0);
@@ -98,73 +99,73 @@ const id = useParams().id;
   const [cameraLoading, setCameraLoading] = useState(false);
   const [cameraErr, setCameraErr] = useState<string | null>(null);
 
-// Safely attach a new stream to the <video> without triggering AbortError
-const setStreamSafely = async (video: HTMLVideoElement, newStream: MediaStream) => {
-  // try to pause any pending play on old stream (ignore errors)
-  try { await video.pause(); } catch {}
+  // Safely attach a new stream to the <video> without triggering AbortError
+  const setStreamSafely = async (video: HTMLVideoElement, newStream: MediaStream) => {
+    // try to pause any pending play on old stream (ignore errors)
+    try { await video.pause(); } catch { }
 
-  // clear srcObject to cancel previous load/play cleanly
-  video.srcObject = null;
+    // clear srcObject to cancel previous load/play cleanly
+    video.srcObject = null;
 
-  // attach the new stream
-  video.srcObject = newStream;
+    // attach the new stream
+    video.srcObject = newStream;
 
-  // ensure autoplay works well on mobile
-  (video as any).playsInline = true;
-  video.muted = true;
+    // ensure autoplay works well on mobile
+    (video as any).playsInline = true;
+    video.muted = true;
 
-  // wait until we have metadata (dimensions)
-  await new Promise<void>((resolve) => {
-    const onMeta = () => {
-      video.removeEventListener("loadedmetadata", onMeta);
-      resolve();
-    };
-    if ((video as any).readyState >= 1) resolve();
-    else video.addEventListener("loadedmetadata", onMeta, { once: true });
-  });
+    // wait until we have metadata (dimensions)
+    await new Promise<void>((resolve) => {
+      const onMeta = () => {
+        video.removeEventListener("loadedmetadata", onMeta);
+        resolve();
+      };
+      if ((video as any).readyState >= 1) resolve();
+      else video.addEventListener("loadedmetadata", onMeta, { once: true });
+    });
 
-  // now play; swallow AbortError (harmless) but surface others
-  await video.play().catch((e: any) => {
-    if (e?.name !== "AbortError") throw e;
-  });
-};
+    // now play; swallow AbortError (harmless) but surface others
+    await video.play().catch((e: any) => {
+      if (e?.name !== "AbortError") throw e;
+    });
+  };
 
 
   // List available cameras (ensures permission so labels/deviceIds are available)
   const refreshCameras = async () => {
-  setCameraErr(null);
-  setCameraLoading(true);
-  try {
-    // Ensure labels/deviceIds are revealed (stops immediately after)
-    const temp = await navigator.mediaDevices
-      .getUserMedia({ video: true, audio: false })
-      .catch(() => null);
+    setCameraErr(null);
+    setCameraLoading(true);
+    try {
+      // Ensure labels/deviceIds are revealed (stops immediately after)
+      const temp = await navigator.mediaDevices
+        .getUserMedia({ video: true, audio: false })
+        .catch(() => null);
 
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const vids = devices.filter((d) => d.kind === "videoinput");
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const vids = devices.filter((d) => d.kind === "videoinput");
 
-    setCameras(vids);
+      setCameras(vids);
 
-    // Prefer a concrete deviceId (not "default" / not empty)
-    const preferred =
-      vids.find(v => v.deviceId && v.deviceId !== "default") ?? vids[0] ?? null;
+      // Prefer a concrete deviceId (not "default" / not empty)
+      const preferred =
+        vids.find(v => v.deviceId && v.deviceId !== "default") ?? vids[0] ?? null;
 
-    setSelectedCameraId(
-      preferred && preferred.deviceId && preferred.deviceId !== "default"
-        ? preferred.deviceId
-        : null  // null means: let the browser pick (works when only "default" exists)
-    );
+      setSelectedCameraId(
+        preferred && preferred.deviceId && preferred.deviceId !== "default"
+          ? preferred.deviceId
+          : null  // null means: let the browser pick (works when only "default" exists)
+      );
 
-    if (temp) temp.getTracks().forEach(t => t.stop());
+      if (temp) temp.getTracks().forEach(t => t.stop());
 
-    // Optional: if exactly one camera, auto-close the picker
-    // if (vids.length === 1) setShowCameraDialog(false);
-  } catch (e: any) {
-    setCameraErr(e?.message ?? "Unable to list cameras.");
-  } finally {
-    setCameraLoading(false);
-  }
-};
+      // Optional: if exactly one camera, auto-close the picker
+      // if (vids.length === 1) setShowCameraDialog(false);
+    } catch (e: any) {
+      setCameraErr(e?.message ?? "Unable to list cameras.");
+    } finally {
+      setCameraLoading(false);
+    }
+  };
 
 
   // Open the modal
@@ -175,9 +176,9 @@ const setStreamSafely = async (video: HTMLVideoElement, newStream: MediaStream) 
 
   // Confirm selection (we just close; swapping is handled by an effect below)
   const confirmCameraSelection = () => {
-  // Even if selectedCameraId is null (only "default"), proceed and let browser pick it
-  setShowCameraDialog(false);
-};
+    // Even if selectedCameraId is null (only "default"), proceed and let browser pick it
+    setShowCameraDialog(false);
+  };
 
 
 
@@ -196,26 +197,26 @@ const setStreamSafely = async (video: HTMLVideoElement, newStream: MediaStream) 
 
   // Start new session
   const startSession = (mode: "live" | "upload") => {
-  const sessionId = generateSessionId();
-  setCurrentSessionId(sessionId);
-  setRecognitionMode(mode);
-  setSessionActive(true);
-  if (mode === "live") {
-    setRunning(true);
-    openCameraPicker();
-  }
-};
+    const sessionId = generateSessionId();
+    setCurrentSessionId(sessionId);
+    setRecognitionMode(mode);
+    setSessionActive(true);
+    if (mode === "live") {
+      setRunning(true);
+      openCameraPicker();
+    }
+  };
 
 
   // Stop session
   const stopSession = () => {
-  setSessionActive(false);
-  setRunning(false);
-  setRecognitionMode(null);
-  setCurrentSessionId("");
-  setPresentList([]);
-  setSelectedCameraId(null); // 👈 reset so the picker auto-opens next time
-};
+    setSessionActive(false);
+    setRunning(false);
+    setRecognitionMode(null);
+    setCurrentSessionId("");
+    setPresentList([]);
+    setSelectedCameraId(null); // 👈 reset so the picker auto-opens next time
+  };
 
   // Add attendance record (with duplicate prevention)
   const addAttendanceRecord = (
@@ -264,11 +265,11 @@ const setStreamSafely = async (video: HTMLVideoElement, newStream: MediaStream) 
   };
 
   getCurrentSession(id).then((response) => {
-      setCurrentSession(response.data.sessionID);
-    
-    }).catch((err) => {
-      console.error("cant get session data? possibly wrong id")
-    })
+    setCurrentSession(response.data.sessionID);
+
+  }).catch((err) => {
+    console.error("cant get session data? possibly wrong id")
+  })
 
   // Manual attendance entry (with duplicate check)
   const handleManualEntry = () => {
@@ -318,33 +319,33 @@ const setStreamSafely = async (video: HTMLVideoElement, newStream: MediaStream) 
   };
 
 
-  
+
 
   // Camera setup
   // Camera setup
-useEffect(() => {
-  if (recognitionMode !== "live") return;
+  useEffect(() => {
+    if (recognitionMode !== "live") return;
 
-  (async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: WIDTH, height: HEIGHT, facingMode: "user" },
-        audio: false,
-      });
-      const video = videoRef.current;
-      if (video) {
-        await setStreamSafely(video, stream); // 👈 use the safe setter
+    (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: WIDTH, height: HEIGHT, facingMode: "user" },
+          audio: false,
+        });
+        const video = videoRef.current;
+        if (video) {
+          await setStreamSafely(video, stream); // 👈 use the safe setter
+        }
+      } catch (e: any) {
+        setErr(String(e));
       }
-    } catch (e: any) {
-      setErr(String(e));
-    }
-  })();
+    })();
 
-  return () => {
-    const tracks = (videoRef.current?.srcObject as MediaStream | null)?.getTracks() ?? [];
-    tracks.forEach((t) => t.stop());
-  };
-}, [recognitionMode]);
+    return () => {
+      const tracks = (videoRef.current?.srcObject as MediaStream | null)?.getTracks() ?? [];
+      tracks.forEach((t) => t.stop());
+    };
+  }, [recognitionMode]);
 
 
 
@@ -359,39 +360,39 @@ useEffect(() => {
 
 
   // === Camera Picker: SWAP STREAM WHEN CAMERA CHANGES (ADD) ===
-useEffect(() => {
-  const swapToSelectedCamera = async () => {
-    if (recognitionMode !== "live" || !running || !selectedCameraId) return;
+  useEffect(() => {
+    const swapToSelectedCamera = async () => {
+      if (recognitionMode !== "live" || !running || !selectedCameraId) return;
 
-    try {
-      const constraints: MediaStreamConstraints = {
-        video: { width: WIDTH, height: HEIGHT, deviceId: { exact: selectedCameraId } },
-        audio: false,
-      };
-      const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+      try {
+        const constraints: MediaStreamConstraints = {
+          video: { width: WIDTH, height: HEIGHT, deviceId: { exact: selectedCameraId } },
+          audio: false,
+        };
+        const newStream = await navigator.mediaDevices.getUserMedia(constraints);
 
-      // Stop old tracks
-      const old = (videoRef.current?.srcObject as MediaStream | null) ?? null;
-      if (old) old.getTracks().forEach((t) => t.stop());
+        // Stop old tracks
+        const old = (videoRef.current?.srcObject as MediaStream | null) ?? null;
+        if (old) old.getTracks().forEach((t) => t.stop());
 
-      // ✅ Use the safe helper instead of direct play()
-      const video = videoRef.current;
-      if (video) {
-        await setStreamSafely(video, newStream);
+        // ✅ Use the safe helper instead of direct play()
+        const video = videoRef.current;
+        if (video) {
+          await setStreamSafely(video, newStream);
+        }
+      } catch (e: any) {
+        setErr(String(e?.message || e));
       }
-    } catch (e: any) {
-      setErr(String(e?.message || e));
-    }
-  };
+    };
 
-  swapToSelectedCamera();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [selectedCameraId]);
+    swapToSelectedCamera();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCameraId]);
 
 
   // === Camera Picker: KEEP LIST FRESH ON DEVICE CHANGES (ADD) ===
   useEffect(() => {
-    const handler = () => { refreshCameras().catch(() => {}); };
+    const handler = () => { refreshCameras().catch(() => { }); };
     if (navigator.mediaDevices?.addEventListener) {
       navigator.mediaDevices.addEventListener("devicechange", handler);
     } else {
@@ -408,6 +409,45 @@ useEffect(() => {
   }, []);
 
 
+  // ✅ Outside and at top level — after your WebSocket setup
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (detectionsRef.current.length > 0) {
+        // Deduplicate detections
+        const unique = Object.values(
+          detectionsRef.current.reduce((acc, det) => {
+            acc[det.name] = det;
+            return acc;
+          }, {} as Record<string, any>)
+        );
+
+        console.log("🕔 Flushing unique detections:", unique);
+
+        // Build payload for backend
+        const payload = unique
+          .filter((d: any) => d?.name && d?.confidence >= 80) // optional threshold
+          .map((d: any) => ({
+            studentId: d.name,
+            confidence: d.confidence,
+            timestamp: new Date().toISOString(),
+            recordedBy: localStorage['username']
+          }));
+
+        try {
+          const res = await automaticMark(currentSession, payload);
+          console.log("✅ Auto-marked successfully:", res);
+          toast.success(`Auto-marked ${payload.length} student(s)`);
+        } catch (err) {
+          console.error("❌ Auto-marking failed:", err);
+        }
+
+        // Clear buffer
+        detectionsRef.current = [];
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [currentSession]);
   // WebSocket connection
   useEffect(() => {
     if (!running || recognitionMode !== "live") {
@@ -415,25 +455,12 @@ useEffect(() => {
       wsRef.current = null;
       return;
     }
-
     const ws = new WebSocket(buildWsUrl(currentSession));
     ws.binaryType = "blob";
     wsRef.current = ws;
-
-
     ws.onopen = () => {
       ws.send(JSON.stringify({ type: "hello", sessionId: id, mode: recognitionMode }));
-
-      const intervalId = setInterval(() => {
-        // 1️⃣ ask backend to run detection
-
-
-        ws.send(JSON.stringify({ type: "detect_request" }));
-
-      }, 5000);
-      console.log("🔁 Auto-mark + detection interval started");
     };
-
     ws.onerror = () => setErr("WebSocket error");
     ws.onclose = () => { };
 
@@ -635,7 +662,7 @@ useEffect(() => {
   const curText = sidebarItems.find((tab) => tab.id === activeTab);
   console.log(activeTab)
 
-  
+
   console.log(id)
   const [isCurrentClosed, setIsCurrentClosed] = useState(false)
   const [isCurrentActive, setIsCurrentActive] = useState(false)
@@ -683,12 +710,14 @@ useEffect(() => {
         toast.error("Unable to set active.");
       });
   };
+  const navigate = useNavigate();
 
   const closeSession = () => {
     if (!id) return;
 
     closeCourse(id).then((response) => {
       toast.success("Successfully set to Closed");
+      navigate(`/session_start/${id}`);
     }).catch((error) => {
       toast.error("Unable to set to close.")
     })
@@ -887,7 +916,7 @@ useEffect(() => {
             </DialogTitle>
           </DialogHeader>
 
-        
+
 
           <div className="space-y-4 py-2">
             <div className="flex flex-col space-y-2">
@@ -937,71 +966,71 @@ useEffect(() => {
       </Dialog>
 
       <Dialog open={showCameraDialog} onOpenChange={setShowCameraDialog}>
-  <DialogContent className="bg-slate-900 border border-slate-700 text-white rounded-2xl shadow-xl">
-    <DialogHeader>
-      <DialogTitle className="text-lg font-semibold text-blue-300">
-        Choose a camera
-      </DialogTitle>
-      <DialogDescription className="text-slate-400">
-        Pick which video input device to use for live recognition.
-      </DialogDescription>
-    </DialogHeader>
+        <DialogContent className="bg-slate-900 border border-slate-700 text-white rounded-2xl shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold text-blue-300">
+              Choose a camera
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Pick which video input device to use for live recognition.
+            </DialogDescription>
+          </DialogHeader>
 
-    <div className="space-y-4 py-2">
-      {cameraErr && <div className="text-red-400 text-sm">{cameraErr}</div>}
+          <div className="space-y-4 py-2">
+            {cameraErr && <div className="text-red-400 text-sm">{cameraErr}</div>}
 
-      <div className="flex items-center gap-2">
-        <Label className="text-sm text-gray-300">Camera</Label>
-        <Button
-          variant="outline"
-          className="ml-auto border border-slate-700 text-gray-300 hover:bg-slate-800 rounded-2xl"
-          onClick={refreshCameras}
-          disabled={cameraLoading}
-        >
-          {cameraLoading ? "Refreshing..." : "Refresh"}
-        </Button>
-      </div>
+            <div className="flex items-center gap-2">
+              <Label className="text-sm text-gray-300">Camera</Label>
+              <Button
+                variant="outline"
+                className="ml-auto border border-slate-700 text-gray-300 hover:bg-slate-800 rounded-2xl"
+                onClick={refreshCameras}
+                disabled={cameraLoading}
+              >
+                {cameraLoading ? "Refreshing..." : "Refresh"}
+              </Button>
+            </div>
 
-      <Select
-        value={selectedCameraId ?? undefined}
-        onValueChange={(v) => setSelectedCameraId(v)}
-        disabled={cameraLoading || !cameras.length}
-      >
-        <SelectTrigger className="bg-slate-800 border-slate-700 text-white rounded-2xl">
-          <SelectValue placeholder={cameraLoading ? "Loading..." : "Select camera"} />
-        </SelectTrigger>
-        <SelectContent className="bg-slate-900 border-slate-700">
-          {cameras.length ? (
-            cameras.map((cam, idx) => (
-              <SelectItem key={cam.deviceId || idx} value={cam.deviceId}>
-                {cam.label || `Camera ${idx + 1}`}
-              </SelectItem>
-            ))
-          ) : (
-            <SelectItem disabled value="none">No cameras found</SelectItem>
-          )}
-        </SelectContent>
-      </Select>
-    </div>
+            <Select
+              value={selectedCameraId ?? undefined}
+              onValueChange={(v) => setSelectedCameraId(v)}
+              disabled={cameraLoading || !cameras.length}
+            >
+              <SelectTrigger className="bg-slate-800 border-slate-700 text-white rounded-2xl">
+                <SelectValue placeholder={cameraLoading ? "Loading..." : "Select camera"} />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-900 border-slate-700">
+                {cameras.length ? (
+                  cameras.map((cam, idx) => (
+                    <SelectItem key={cam.deviceId || idx} value={cam.deviceId}>
+                      {cam.label || `Camera ${idx + 1}`}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem disabled value="none">No cameras found</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
 
-    <DialogFooter className="flex justify-end gap-2">
-      <Button
-        variant="outline"
-        className="border border-slate-700 text-gray-300 hover:bg-slate-800 rounded-2xl"
-        onClick={() => setShowCameraDialog(false)}
-      >
-        Cancel
-      </Button>
-      <Button
-        onClick={confirmCameraSelection}
-        className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-400/40 rounded-2xl"
-        disabled={!selectedCameraId}
-      >
-        Use this camera
-      </Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
+          <DialogFooter className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              className="border border-slate-700 text-gray-300 hover:bg-slate-800 rounded-2xl"
+              onClick={() => setShowCameraDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmCameraSelection}
+              className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-400/40 rounded-2xl"
+              disabled={!selectedCameraId}
+            >
+              Use this camera
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
 
 

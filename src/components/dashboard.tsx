@@ -455,9 +455,9 @@ export function Live({
                             <div
                               className={cn(
                                 "w-2.5 h-2.5 rounded-full",
-                                record.confidenceThreshold >= 0.9
+                                record.confidenceThreshold >= 90
                                   ? "bg-emerald-400"
-                                  : record.confidenceThreshold >= 0.7
+                                  : record.confidenceThreshold >= 70
                                     ? "bg-yellow-400"
                                     : "bg-red-400"
                               )}
@@ -469,40 +469,19 @@ export function Live({
                         </TableCell>
 
                         <TableCell>
-                          {editingRows[record.attendanceId] ? (
-                            <Select
-                              value={record.method?.toLowerCase() ?? ""}
-                              onValueChange={(v) =>
-                                setCurrentAttendanceRecords((prev:any) =>
-                                  prev.map((r:any) =>
-                                    r.attendanceId === record.attendanceId ? { ...r, method: v } : r
-                                  )
-                                )
-                              }
-                            >
-                              <SelectTrigger className="h-8 w-[140px] bg-slate-800/50 border-slate-700/50 text-slate-200 rounded-2xl">
-                                <SelectValue placeholder="Select type" />
-                              </SelectTrigger>
-                              <SelectContent className="bg-slate-900 border-slate-700">
-                                <SelectItem value="automatic">Automatic</SelectItem>
-                                <SelectItem value="manual">Manual</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "capitalize rounded-full px-3 py-1 border font-medium",
-                                record.method === "AUTOMATIC"
-                                  ? "border-blue-500/30 text-blue-400 bg-blue-500/10"
-                                  : record.method === "BATCH_AUTO"
-                                    ? "border-amber-500/30 text-amber-400 bg-amber-500/10"
-                                    : "border-purple-500/30 text-purple-400 bg-purple-500/10"
-                              )}
-                            >
-                              {stringFormatter(record.method)}
-                            </Badge>
-                          )}
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "capitalize rounded-full px-3 py-1 border font-medium",
+                              record.method === "AUTOMATIC"
+                                ? "border-blue-500/30 text-blue-400 bg-blue-500/10"
+                                : record.method === "BATCH_AUTO"
+                                  ? "border-amber-500/30 text-amber-400 bg-amber-500/10"
+                                  : "border-purple-500/30 text-purple-400 bg-purple-500/10"
+                            )}
+                          >
+                            {stringFormatter(record.method)}
+                          </Badge>
                         </TableCell>
 
                         <TableCell>

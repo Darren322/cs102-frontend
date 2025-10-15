@@ -1,5 +1,5 @@
 import { api } from '../axios';
-import type { Session } from "../../utils/types";
+//import type { Session } from "../../utils/types";
 const url = `http://localhost:8081/api/sessions`
 export function getSessionByCreator() {
     console.log(localStorage)
