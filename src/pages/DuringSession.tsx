@@ -98,32 +98,74 @@ const id = useParams().id;
   const [cameraLoading, setCameraLoading] = useState(false);
   const [cameraErr, setCameraErr] = useState<string | null>(null);
 
+// Safely attach a new stream to the <video> without triggering AbortError
+const setStreamSafely = async (video: HTMLVideoElement, newStream: MediaStream) => {
+  // try to pause any pending play on old stream (ignore errors)
+  try { await video.pause(); } catch {}
+
+  // clear srcObject to cancel previous load/play cleanly
+  video.srcObject = null;
+
+  // attach the new stream
+  video.srcObject = newStream;
+
+  // ensure autoplay works well on mobile
+  (video as any).playsInline = true;
+  video.muted = true;
+
+  // wait until we have metadata (dimensions)
+  await new Promise<void>((resolve) => {
+    const onMeta = () => {
+      video.removeEventListener("loadedmetadata", onMeta);
+      resolve();
+    };
+    if ((video as any).readyState >= 1) resolve();
+    else video.addEventListener("loadedmetadata", onMeta, { once: true });
+  });
+
+  // now play; swallow AbortError (harmless) but surface others
+  await video.play().catch((e: any) => {
+    if (e?.name !== "AbortError") throw e;
+  });
+};
+
+
   // List available cameras (ensures permission so labels/deviceIds are available)
   const refreshCameras = async () => {
-    setCameraErr(null);
-    setCameraLoading(true);
-    try {
-      const temp = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }).catch(() => null);
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const vids = devices.filter((d) => d.kind === "videoinput");
-      setCameras(vids);
+  setCameraErr(null);
+  setCameraLoading(true);
+  try {
+    // Ensure labels/deviceIds are revealed (stops immediately after)
+    const temp = await navigator.mediaDevices
+      .getUserMedia({ video: true, audio: false })
+      .catch(() => null);
 
-      if (vids.length) {
-        const keep =
-          selectedCameraId && vids.some((v) => v.deviceId === selectedCameraId)
-            ? selectedCameraId
-            : vids[0].deviceId;
-        setSelectedCameraId(keep);
-      } else {
-        setSelectedCameraId(null);
-      }
-      if (temp) temp.getTracks().forEach((t) => t.stop());
-    } catch (e: any) {
-      setCameraErr(e?.message ?? "Unable to list cameras.");
-    } finally {
-      setCameraLoading(false);
-    }
-  };
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const vids = devices.filter((d) => d.kind === "videoinput");
+
+    setCameras(vids);
+
+    // Prefer a concrete deviceId (not "default" / not empty)
+    const preferred =
+      vids.find(v => v.deviceId && v.deviceId !== "default") ?? vids[0] ?? null;
+
+    setSelectedCameraId(
+      preferred && preferred.deviceId && preferred.deviceId !== "default"
+        ? preferred.deviceId
+        : null  // null means: let the browser pick (works when only "default" exists)
+    );
+
+    if (temp) temp.getTracks().forEach(t => t.stop());
+
+    // Optional: if exactly one camera, auto-close the picker
+    // if (vids.length === 1) setShowCameraDialog(false);
+  } catch (e: any) {
+    setCameraErr(e?.message ?? "Unable to list cameras.");
+  } finally {
+    setCameraLoading(false);
+  }
+};
+
 
   // Open the modal
   const openCameraPicker = async () => {
@@ -133,12 +175,10 @@ const id = useParams().id;
 
   // Confirm selection (we just close; swapping is handled by an effect below)
   const confirmCameraSelection = () => {
-    if (!selectedCameraId) {
-      setCameraErr("Please select a camera.");
-      return;
-    }
-    setShowCameraDialog(false);
-  };
+  // Even if selectedCameraId is null (only "default"), proceed and let browser pick it
+  setShowCameraDialog(false);
+};
+
 
 
   // Config
@@ -281,28 +321,31 @@ const id = useParams().id;
   
 
   // Camera setup
-  useEffect(() => {
-    if (recognitionMode !== "live") return;
+  // Camera setup
+useEffect(() => {
+  if (recognitionMode !== "live") return;
 
-    (async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: WIDTH, height: HEIGHT, facingMode: "user" },
-          audio: false,
-        });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-        }
-      } catch (e: any) {
-        setErr(String(e));
+  (async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: WIDTH, height: HEIGHT, facingMode: "user" },
+        audio: false,
+      });
+      const video = videoRef.current;
+      if (video) {
+        await setStreamSafely(video, stream); // 👈 use the safe setter
       }
-    })();
-    return () => {
-      const tracks = (videoRef.current?.srcObject as MediaStream | null)?.getTracks() ?? [];
-      tracks.forEach((t) => t.stop());
-    };
-  }, [recognitionMode]);
+    } catch (e: any) {
+      setErr(String(e));
+    }
+  })();
+
+  return () => {
+    const tracks = (videoRef.current?.srcObject as MediaStream | null)?.getTracks() ?? [];
+    tracks.forEach((t) => t.stop());
+  };
+}, [recognitionMode]);
+
 
 
 
@@ -316,33 +359,35 @@ const id = useParams().id;
 
 
   // === Camera Picker: SWAP STREAM WHEN CAMERA CHANGES (ADD) ===
-  useEffect(() => {
-    const swapToSelectedCamera = async () => {
-      if (recognitionMode !== "live" || !running || !selectedCameraId) return;
+useEffect(() => {
+  const swapToSelectedCamera = async () => {
+    if (recognitionMode !== "live" || !running || !selectedCameraId) return;
 
-      try {
-        const constraints: MediaStreamConstraints = {
-          video: { width: WIDTH, height: HEIGHT, deviceId: { exact: selectedCameraId } },
-          audio: false,
-        };
-        const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+    try {
+      const constraints: MediaStreamConstraints = {
+        video: { width: WIDTH, height: HEIGHT, deviceId: { exact: selectedCameraId } },
+        audio: false,
+      };
+      const newStream = await navigator.mediaDevices.getUserMedia(constraints);
 
-        // Stop old tracks
-        const old = (videoRef.current?.srcObject as MediaStream | null) ?? null;
-        if (old) old.getTracks().forEach((t) => t.stop());
+      // Stop old tracks
+      const old = (videoRef.current?.srcObject as MediaStream | null) ?? null;
+      if (old) old.getTracks().forEach((t) => t.stop());
 
-        if (videoRef.current) {
-          videoRef.current.srcObject = newStream;
-          await videoRef.current.play();
-        }
-      } catch (e: any) {
-        setErr(String(e?.message || e));
+      // ✅ Use the safe helper instead of direct play()
+      const video = videoRef.current;
+      if (video) {
+        await setStreamSafely(video, newStream);
       }
-    };
+    } catch (e: any) {
+      setErr(String(e?.message || e));
+    }
+  };
 
-    swapToSelectedCamera();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCameraId]);
+  swapToSelectedCamera();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [selectedCameraId]);
+
 
   // === Camera Picker: KEEP LIST FRESH ON DEVICE CHANGES (ADD) ===
   useEffect(() => {
