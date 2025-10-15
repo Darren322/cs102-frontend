@@ -1,7 +1,7 @@
 // src/components/Live.tsx
 "use client"
 
-import { Play, Square, Edit3, Upload, Check, X, Users, XCircle, FileText, Clock, CircleDotDashed } from "lucide-react"
+import { Play, Square, Upload, Users, XCircle, FileText, Clock, CircleDotDashed } from "lucide-react"
 import { useEffect, useState } from "react"
 import type { LiveProps } from "../components/utils/dashboard-types"
 import { useParams } from "react-router-dom";
@@ -218,7 +218,7 @@ export function Live({
       className={cn(
         "relative w-full overflow-y-auto min-h-screen flex flex-col justify-start",
         "bg-[radial-gradient(ellipse_at_bottom,theme(colors.slate.900)_0%,theme(colors.slate.950)_100%)]",
-        "w-auto",
+        "",
         "flex flex-col justify-start min-h-screen"
 
       )}
