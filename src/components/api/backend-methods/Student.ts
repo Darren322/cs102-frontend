@@ -25,6 +25,17 @@ export function addNewStudent(student: Student){
 //Need to add face data here
 export function addStudentFace(studentId:string){
     const response = api.post(url+ `/api/student/${studentId}/faces`)
+    // export function addStudent() {
+    // //sample
+    // let studentObject = {
+    //     "studentId": "S12345678", // user input
+    //     "username": "nick", //opt field ?
+    //     "name": "Nicholas Tan", //user input
+    //     "email": "nick@email.com", //get from localStorage
+    //     "phone": "91234567", // user input
+    //     "faceData": "base64EncodedFaceDataString" //set as empty first.
+    // }}
+
     return response
 }
 

@@ -61,7 +61,7 @@ export default function SmartAttendanceSystem() {
   const [showBatchDialog, setShowBatchDialog] = useState(false);
   const [batchStatus, setBatchStatus] = useState("ABSENT");
   const [batchRemarks, setBatchRemarks] = useState("");
-
+  const [currentSession, setCurrentSession] = useState("");
 
   // UI state
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -85,7 +85,7 @@ export default function SmartAttendanceSystem() {
   const [fps, setFps] = useState(0);            // frames sent per second (camera -> backend)
   const frameCountRef = useRef(0);
   const fpsTimerRef = useRef<number | null>(null);
-
+const id = useParams().id;
   // (Optional) received FPS if you also want to show server->client stream rate
   const [recvFps, setRecvFps] = useState(0);
   const recvCountRef = useRef(0);
@@ -144,7 +144,9 @@ export default function SmartAttendanceSystem() {
   // Config
   const WIDTH = 640;
   const HEIGHT = 480;
-  const WS_URL = "ws://localhost:8081/ws/live-scan";
+  const WS_BASE = "ws://localhost:8081/ws/live-scan";
+  const buildWsUrl = (sessionId: string) =>
+    `${WS_BASE}?sessionId=${encodeURIComponent(sessionId)}`;
   const detectionsRef = useRef<any[]>([]);
 
   // Generate session ID
@@ -220,6 +222,13 @@ export default function SmartAttendanceSystem() {
     console.log(`Attendance marked for student ${studentId} in session ${currentSessionId}`);
     return true;
   };
+
+  getCurrentSession(id).then((response) => {
+      setCurrentSession(response.data.sessionID);
+    
+    }).catch((err) => {
+      console.error("cant get session data? possibly wrong id")
+    })
 
   // Manual attendance entry (with duplicate check)
   const handleManualEntry = () => {
@@ -362,14 +371,18 @@ export default function SmartAttendanceSystem() {
       return;
     }
 
-    const ws = new WebSocket(WS_URL);
+    const ws = new WebSocket(buildWsUrl(currentSession));
     ws.binaryType = "blob";
     wsRef.current = ws;
 
 
     ws.onopen = () => {
+      ws.send(JSON.stringify({ type: "hello", sessionId: id, mode: recognitionMode }));
+
       const intervalId = setInterval(() => {
         // 1️⃣ ask backend to run detection
+
+
         ws.send(JSON.stringify({ type: "detect_request" }));
 
       }, 5000);
@@ -577,13 +590,14 @@ export default function SmartAttendanceSystem() {
   const curText = sidebarItems.find((tab) => tab.id === activeTab);
   console.log(activeTab)
 
-  const id = useParams().id;
+  
   console.log(id)
   const [isCurrentClosed, setIsCurrentClosed] = useState(false)
   const [isCurrentActive, setIsCurrentActive] = useState(false)
 
   useEffect(() => {
     getCurrentSession(id).then((response) => {
+      setCurrentSession(response.data.sessionID);
       console.log(response.data.active)
       console.log(response.data.closed)
       setIsCurrentActive(response.data.active)
@@ -659,24 +673,24 @@ export default function SmartAttendanceSystem() {
   }, []);
 
 
-  const exportPDF = ()=>{
-    pdfExport().then((response)=>{
+  const exportPDF = () => {
+    pdfExport(id).then((response) => {
       console.log(response)
       setConfirmationDialog(false)
       toast.success('Sent PDF Successfully and emailed.')
-    }).catch((error)=>{
+    }).catch((error) => {
       console.error(error)
       setConfirmationDialog(false)
       toast.error('PDF did not manage to send and emailed.')
     })
   }
 
-  const exportCSV = () =>{
-    csvExport().then((response)=>{
+  const exportCSV = () => {
+    csvExport(id).then((response) => {
       console.log(response)
       setConfirmationDialog(false)
       toast.success('Sent CSV Successfully and emailed.')
-    }).catch((error)=>{
+    }).catch((error) => {
       console.error(error)
       setConfirmationDialog(false)
       toast.error('CSV did not manage to send and emailed.')
@@ -960,7 +974,7 @@ export default function SmartAttendanceSystem() {
               <Button
                 className="w-full bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-400/40 
                rounded-2xl px-4 py-5 backdrop-blur-sm shadow-sm transition-all flex items-center justify-center gap-2"
-               onClick={()=>{exportPDF}}
+                onClick={() => { exportPDF() }}
               >
                 <File className="w-4 h-4" />
                 PDF
@@ -970,7 +984,7 @@ export default function SmartAttendanceSystem() {
               <Button
                 className="w-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 
                rounded-2xl px-4 py-5 backdrop-blur-sm shadow-sm transition-all flex items-center justify-center gap-2"
-               onClick={()=>{exportCSV}}
+                onClick={() => { exportCSV() }}
               >
                 <FileSpreadsheet className="w-4 h-4" />
                 CSV

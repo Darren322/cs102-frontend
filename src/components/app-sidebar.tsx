@@ -95,14 +95,24 @@ export function AppSidebar() {
     });
     navigate("/login", { replace: true });
   };
+const [sidebarItems, setSidebarItems] = useState<any>([]);
 
-  const sidebarItems = [
-    { id: "dashboard", label: "Dashboard", icon: Home, path: "/dashboard" },
-    { id: "sessions", label: "Sessions", icon: Clock, path: "/sessions" },
-    { id: "rosters", label: "Rosters", icon: Users, path: "/rosters" },
-    { id: "students", label: "Students", icon: User, path: "/students" },
-    { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
-  ] as const;
+useEffect(() => {
+  const username = localStorage['role'];
+
+  if (username === "STAFF") {
+    setSidebarItems([
+      { id: "dashboard", label: "Dashboard", icon: Home, path: "/dashboard" },
+      { id: "sessions", label: "Sessions", icon: Clock, path: "/sessions" },
+      { id: "rosters", label: "Rosters", icon: Users, path: "/rosters" },
+      { id: "students", label: "Students", icon: User, path: "/students" }    ]);
+  } else {
+    setSidebarItems([
+      { id: "enrol", label: "Enrol for Class", icon: Home, path: "/enrolStudent" },
+    ]);
+  }
+}, []); // run once on mount
+
 
   return (
     <Sidebar>
