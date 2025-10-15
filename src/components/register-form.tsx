@@ -2,6 +2,7 @@ import * as React from "react";
 import { Eye, EyeOff, Lock, User } from "lucide-react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+// student creation deferred to login flow (consumed by login-form)
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -29,6 +30,8 @@ export function RegisterForm({
   );
 
   const [fullName, setFullName] = React.useState("");
+  const [studentId, setStudentId] = React.useState("");
+  const [studentIdTouched, setStudentIdTouched] = React.useState(false);
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [confirm, setConfirm] = React.useState("");
@@ -56,6 +59,17 @@ export function RegisterForm({
       setErrorMsg("Passwords do not match.");
       return;
     }
+    // if registering as student, require a student id
+    if (role === "STUDENT" && !studentId.trim()) {
+      setErrorMsg("Student ID is required for student accounts.");
+      return;
+    }
+    // validate student id format
+    const studentIdPattern = /^S\d{8}$/;
+    if (role === "STUDENT" && studentId && !studentIdPattern.test(studentId)) {
+      setErrorMsg("Student ID must start with 'S' followed by 8 digits, e.g. S12345678.");
+      return;
+    }
     if (passwordIssues.length > 0) {
       setErrorMsg("Please meet the password requirements.");
       return;
@@ -75,7 +89,7 @@ export function RegisterForm({
         }),
       });
 
-      const data = await res.json().catch(() => ({} as any));
+  const data = await res.json().catch(() => ({} as unknown as { success?: boolean; token?: string; message?: string; username?: string; role?: string }));
       if (!res.ok || !data?.success) {
         setErrorMsg(data?.message || "Unable to create account");
         return;
@@ -83,9 +97,37 @@ export function RegisterForm({
 
       // If backend returns token -> go straight in
       if (data.token) {
+        // store username/role but do not persist token for students (require login)
+        try {
+          sessionStorage.setItem("username", data.username ?? email);
+          sessionStorage.setItem("role", data.role ?? role);
+        } catch {
+          // ignore storage errors
+        }
+
+        // If the new account is a STUDENT, defer creating the Student record until
+        // after the user logs in. Save the pending student payload in sessionStorage
+        // and redirect the user to the login page.
+        if ((data.role ?? role) === "STUDENT") {
+          const pending = {
+            studentId: studentId,
+            name: fullName || undefined,
+            email: email || undefined,
+            username: email || undefined,
+            phone: undefined,
+            faceData: null,
+          };
+          try {
+            sessionStorage.setItem("pendingStudent", JSON.stringify(pending));
+          } catch {
+            // ignore storage errors
+          }
+          navigate("/login", { state: { flash: "Account created. Please sign in to complete enrollment." } });
+          return;
+        }
+
+        // For non-student (staff), keep previous behavior and log them in
         sessionStorage.setItem("token", data.token);
-        sessionStorage.setItem("username", data.username ?? email);
-        sessionStorage.setItem("role", data.role ?? role);
         navigate((data.role ?? role) === "STAFF" ? "/dashboard" : "/dashboard");
         return;
       }
@@ -178,6 +220,33 @@ export function RegisterForm({
             />
           </div>
         </Field>
+
+        {/* Student ID (only for STUDENT role) */}
+        {role === "STUDENT" && (
+          <Field>
+            <FieldLabel htmlFor="studentId" className="text-slate-300">
+              Student ID
+            </FieldLabel>
+            <div className="relative">
+              {/* reuse User icon for now */}
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+              <Input
+                id="studentId"
+                type="text"
+                placeholder="S12345678"
+                value={studentId}
+                onChange={(e) => setStudentId(e.target.value)}
+                onBlur={() => setStudentIdTouched(true)}
+                autoComplete="off"
+                className="pl-9 bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-slate-600"
+              />
+            </div>
+            {/* Inline validation */}
+            {studentIdTouched && studentId && !/^S\d{8}$/.test(studentId) && (
+              <p className="mt-2 text-sm text-red-400">Student ID must start with 'S' followed by 8 digits (e.g. S12345678).</p>
+            )}
+          </Field>
+        )}
 
         {/* Email */}
         <Field>

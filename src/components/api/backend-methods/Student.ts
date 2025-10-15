@@ -3,7 +3,17 @@ import { api } from "../axios"
 
 const url = "http://localhost:8081/api/student"
 
-type Student = {
+// Payload type for creating/enrolling a student (API expects studentId)
+export type StudentPayload = {
+    studentId: string,
+    name?: string,
+    email?: string,
+    phone?: string,
+    faceData?: string | null,
+    username?: string
+}
+
+export type Student = {
     student_id: string,
     username: string,
     name: string,
@@ -13,26 +23,30 @@ type Student = {
     updated_at: Date,
     classGroup: string
 }
+
 export function getAllStudent() {
     const response = api.get(url)
     return response
 }
-export function addNewStudent(student: Student) {
-    const response = api.post(url, student)
-    // export function addStudent() {
-    // //sample
-    // let studentObject = {
-    //     "studentId": "S12345678", // user input
-    //     "username": "nick", //opt field ?
-    //     "name": "Nicholas Tan", //user input
-    //     "email": "nick@email.com", //get from localStorage
-    //     "phone": "91234567", // user input
-    //     "faceData": "base64EncodedFaceDataString" //set as empty first.
-    // }}
-    return response
+
+// Create a new Student record. Optionally pass an auth token to include in the
+// Authorization header. Returns the axios response promise.
+// Enroll/create a student for the currently authenticated user.
+// The backend endpoint expects POST /api/student/me and uses the JWT principal to
+// associate the Student with the existing User, so include the token when available.
+export function addNewStudent(student: StudentPayload, token?: string) {
+    const endpoint = `${url}/me`
+    // ensure we don't send the username/PK to the server — server should derive it from the JWT
+    const body = { ...student } as StudentPayload & Record<string, unknown>
+    if (body.username) delete body.username
+
+    if (token) {
+        return api.post(endpoint, body, { headers: { Authorization: `Bearer ${token}` } })
+    }
+    return api.post(endpoint, body)
 }
 
-//Need to add face data here
+// Need to add face data here
 export function addStudentFace(studentId: string) {
     const response = api.post(url + `/api/student/${studentId}/faces`)
 
