@@ -792,8 +792,8 @@ export default function SmartAttendanceSystem() {
                   <div className="grid grid-cols-1 gap-3">
                     <Button
                       onClick={() => setConfirmationDialog(true)}
-                      className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/30 
-          font-medium rounded-lg px-4 py-2 backdrop-blur-sm shadow-sm transition-all"
+                      className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/30
+          font-medium rounded-2xl px-4 py-2 backdrop-blur-sm shadow-sm transition-all"
                     >
                       <Upload size={18} className="mr-2" />
                       Export

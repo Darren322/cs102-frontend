@@ -28,7 +28,7 @@ type Shot = { file: File; previewUrl: string; dir: Direction; ts: number };
 
 export default function DirectionCaptureFlow({
   steps = DEFAULT_STEPS,
-  holdSeconds = 3,
+  holdSeconds = 1,
   size = 420,
 }: {
   steps?: Step[];

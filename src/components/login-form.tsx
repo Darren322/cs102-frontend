@@ -159,7 +159,7 @@ export function LoginForm({
               onClick={() => setRole("student")}
               aria-pressed={role === "student"}
               className={cn(
-                "rounded-lg border px-3 py-2 text-sm transition hover:cursor-pointer hover:scale-101",
+                "rounded-2xl border px-3 py-2 text-sm transition hover:cursor-pointer hover:scale-101",
                 role === "student"
                   ? "bg-slate-800 border-slate-600 text-slate-100"
                   : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"
@@ -172,7 +172,7 @@ export function LoginForm({
               onClick={() => setRole("staff")}
               aria-pressed={role === "staff"}
               className={cn(
-                "rounded-lg border px-3 py-2 text-sm transition hover:cursor-pointer hover:scale-101",
+                "rounded-2xl border px-3 py-2 text-sm transition hover:cursor-pointer hover:scale-101",
                 role === "staff"
                   ? "bg-slate-800 border-slate-600 text-slate-100"
                   : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"
@@ -198,7 +198,7 @@ export function LoginForm({
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="username"
-              className="pl-9 bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-slate-600"
+              className="pl-9 bg-slate-950 rounded-2xl border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-slate-600"
             />
           </div>
         </Field>
@@ -209,12 +209,6 @@ export function LoginForm({
             <FieldLabel htmlFor="password" className="text-slate-300">
               Password
             </FieldLabel>
-            <a
-              href="#"
-              className="ml-auto text-sm underline-offset-4 hover:underline text-slate-400"
-            >
-              Forgot your password?
-            </a>
           </div>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
@@ -225,7 +219,8 @@ export function LoginForm({
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="current-password"
-              className="pl-9 pr-10 bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-slate-600"
+              placeholder="Enter your password here"
+              className="pl-9 pr-10 bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-slate-600 rounded-2xl"
             />
             <button
               type="button"
@@ -238,28 +233,13 @@ export function LoginForm({
           </div>
         </Field>
 
-        {/* Remember */}
-        <Field>
-          <div className="flex items-center justify-between">
-            <label className="inline-flex items-center gap-2 text-sm text-slate-300">
-              <input
-                id="remember"
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-700 bg-slate-950 text-slate-200"
-              />
-              Remember me
-            </label>
-          </div>
-        </Field>
 
         {/* Submit */}
         <Field>
           <Button
             type="submit"
             disabled={loading}
-            className="w-full bg-slate-700 hover:bg-slate-600 text-slate-50 hover:cursor-pointer hover:scale-103"
+            className="w-full bg-slate-700 hover:bg-slate-600 text-slate-50 hover:cursor-pointer hover:scale-103 rounded-2xl"
           >
             {loading ? "Signing in…" : "Login"}
           </Button>

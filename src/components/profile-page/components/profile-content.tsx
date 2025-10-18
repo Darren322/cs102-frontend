@@ -1,137 +1,162 @@
-import { Shield, Key, Trash2 } from "lucide-react";
 
+import { getcurrentStudent } from "@/components/api/backend-methods/Student";
+import { getByUsername } from "@/components/api/backend-methods/Users";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
-
+import { formatDateTime, stringFormatter } from "@/components/utils/stringFormatter";
+import { useEffect, useState } from "react";
 import DirectionCountdownCapture from "@/components/capture/SimpleDirectionCapture";
+
 
 export default function ProfileContent() {
   const currentUserType = localStorage['role']
+  console.log(localStorage)
+  const [curUsrInfo, setCurUsrInfo] = useState<any>(null);
+  const [curStudent, setCurStudent] = useState<any>(null);
+  useEffect(() => {
+    getByUsername().then((resp) => {
+      console.log(resp.data)
+      setCurUsrInfo(resp.data)
+    }).catch((err) => {
+      setCurUsrInfo(err)
+    })
+  }, [localStorage['username']])
+
+  console.log(curUsrInfo, 'usr table')
+
+  useEffect(() => {
+    getcurrentStudent().then((resp) => {
+      console.log(resp.data)
+      setCurStudent(resp.data);
+    })
+      .catch((err) => {
+        setCurStudent({});
+      })
+  }, [localStorage['username']])
+
+  console.log(curStudent, 'stu table')
+
   return (
     <Tabs defaultValue="personal" className="space-y-6 rounded-4xl">
-      <TabsList   className={`grid w-full rounded ${
-    currentUserType === "STAFF" ? "grid-cols-3" : "grid-cols-2"
-  }`}>
-        <TabsTrigger value="personal" className="hover:cursor-pointer hover:backdrop-brightness-80 transition-transform">Personal</TabsTrigger>
+      <TabsList className={`grid w-full rounded-2xl ${currentUserType === "STAFF" ? "grid-cols-1" : "grid-cols-2"
+        }`}>
+        <TabsTrigger value="personal" className="rounded-2xl hover:cursor-pointer hover:backdrop-brightness-80 transition-transform">Personal</TabsTrigger>
         {
           currentUserType == "STAFF" && (
-              <TabsTrigger value="account" className="hover:cursor-pointer hover:backdrop-brightness-80 transition-transform">Account Settings</TabsTrigger>
+            <></>
+            // <TabsTrigger value="account" className="rounded-2xl hover:cursor-pointer hover:backdrop-brightness-80 transition-transform">Account Settings</TabsTrigger>
           )
         }
-        <TabsTrigger value="security" className="hover:cursor-pointer hover:backdrop-brightness-80 transition-transform">Face Upload</TabsTrigger>
+        {
+          currentUserType !== "STAFF" && (
+            <TabsTrigger value="security" className="rounded-2xl hover:cursor-pointer hover:backdrop-brightness-80 transition-transform">Face Upload</TabsTrigger>
+          )
+        }
       </TabsList>
 
       {/* Personal Information */}
       <TabsContent value="personal" className="space-y-6 rounded-4xl">
-        <Card className="rounded-2xl">
+        <Card className="rounded-2xl p-12">
+
           <CardHeader>
             <CardTitle>Personal Information</CardTitle>
-            <CardDescription>Update your personal details and profile information.</CardDescription>
+            {
+              currentUserType == "STAFF" ? (
+                <CardDescription>Your personal details, at a glance.</CardDescription>
+              ) : (
+                <CardDescription>Update your personal details and profile information.</CardDescription>
+              )
+            }
+
+
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
-                <Input id="firstName" defaultValue="John" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name</Label>
-                <Input id="lastName" defaultValue="Doe" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" defaultValue="john.doe@example.com" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
-                <Input id="phone" defaultValue="+1 (555) 123-4567" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="jobTitle">Job Title</Label>
-                <Input id="jobTitle" defaultValue="Senior Product Designer" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="company">Company</Label>
-                <Input id="company" defaultValue="Acme Inc." />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="bio">Bio</Label>
-              <Textarea
-                id="bio"
-                placeholder="Tell us about yourself..."
-                defaultValue="Passionate product designer with 8+ years of experience creating user-centered digital experiences. I love solving complex problems and turning ideas into beautiful, functional products."
-                rows={4}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="location">Location</Label>
-              <Input id="location" defaultValue="San Francisco, CA" />
-            </div>
+
+            {
+              currentUserType != "STAFF" ? (
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">Name</Label>
+                    <Input id="firstName" value={curStudent?.name} className="rounded-2xl" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" className="rounded-2xl" value={localStorage['username']} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Student ID</Label>
+                    <Input id="phone" value={curStudent?.studentId} className="rounded-2xl" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="jobTitle">Role</Label>
+                    <Input id="jobTitle" value={curUsrInfo ? stringFormatter(curUsrInfo.role) : ""} className="rounded-2xl" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="jobTitle">Account created at</Label>
+                    <Input id="jobTitle" value={curUsrInfo ? formatDateTime(curUsrInfo.createdAt) : "—"} className="rounded-2xl" disabled />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="company">Last login at</Label>
+                    <Input id="company" value={curUsrInfo ? formatDateTime(curUsrInfo.updatedAt) : "—"} className="rounded-2xl" disabled />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">Email</Label>
+                    <Input id="fullName" defaultValue={localStorage['username']} className="rounded-2xl" disabled />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Role</Label>
+                    <Input id="phone" defaultValue={stringFormatter(localStorage['role'])} className="rounded-2xl" disabled />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="jobTitle">Account created at</Label>
+                    <Input id="jobTitle" value={curUsrInfo ? formatDateTime(curUsrInfo.createdAt) : "—"} className="rounded-2xl" disabled />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="company">Last login at</Label>
+                    <Input id="company" value={curUsrInfo ? formatDateTime(curUsrInfo.updatedAt) : "—"} className="rounded-2xl" disabled />
+                  </div>
+                </div>
+              )
+            }
+
           </CardContent>
         </Card>
       </TabsContent>
 
       {/* Account Settings */}
       {
-        currentUserType == "STAFF" && (<>
-        <TabsContent value="account" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Account Settings</CardTitle>
-              <CardDescription>Manage your account preferences and subscription.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label className="text-base">Account Status</Label>
-                <p className="text-muted-foreground text-sm">Your account is currently active</p>
-              </div>
-              <Badge variant="outline" className="border-green-200 bg-green-50 text-green-700">
-                Active
-              </Badge>
-            </div> */}
-              <Separator />
-              {/* <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label className="text-base">Subscription Plan</Label>
-                <p className="text-muted-foreground text-sm">Pro Plan - $29/month</p>
-              </div>
-              <Button variant="outline">Manage Subscription</Button>
-            </div> */}
-              <Separator />
-              {/* <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label className="text-base">Account Visibility</Label>
-                <p className="text-muted-foreground text-sm">
-                  Make your profile visible to other users
-                </p>
-              </div>
-              <Switch defaultChecked />
-            </div> */}
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <Label className="text-base">Data Export</Label>
-                  <p className="text-muted-foreground text-sm">Download a copy of your data</p>
+        currentUserType == "STAFF"
+        &&
+        (
+          <TabsContent value="account" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Account Settings</CardTitle>
+                <CardDescription>Manage your account preferences and subscription.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label className="text-base">Data Export</Label>
+                    <p className="text-muted-foreground text-sm">Download a copy of your data</p>
+                  </div>
+                  <Button variant="outline">Export Data</Button>
                 </div>
-                <Button variant="outline">Export Data</Button>
-              </div>
-            </CardContent>
-          </Card>
-
-        </TabsContent>
-      </>)
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )
       }
 
-
-      {/* Security Settings */}
-      <TabsContent value="security" className="space-y-6">
+            <TabsContent value="security" className="space-y-6">
         <Card className="justify-center flex-1 text-center">
           <CardHeader>
             <CardTitle>Face Enrollment</CardTitle>
@@ -144,67 +169,6 @@ export default function ProfileContent() {
           </CardContent>
         </Card>
       </TabsContent>
-
-      {/* Notification Settings
-      <TabsContent value="notifications" className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Notification Preferences</CardTitle>
-            <CardDescription>Choose what notifications you want to receive.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <Label className="text-base">Email Notifications</Label>
-                  <p className="text-muted-foreground text-sm">Receive notifications via email</p>
-                </div>
-                <Switch defaultChecked />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <Label className="text-base">Push Notifications</Label>
-                  <p className="text-muted-foreground text-sm">
-                    Receive push notifications in your browser
-                  </p>
-                </div>
-                <Switch />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <Label className="text-base">Marketing Emails</Label>
-                  <p className="text-muted-foreground text-sm">
-                    Receive emails about new features and updates
-                  </p>
-                </div>
-                <Switch defaultChecked />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <Label className="text-base">Weekly Summary</Label>
-                  <p className="text-muted-foreground text-sm">
-                    Get a weekly summary of your activity
-                  </p>
-                </div>
-                <Switch defaultChecked />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <Label className="text-base">Security Alerts</Label>
-                  <p className="text-muted-foreground text-sm">
-                    Important security notifications (always enabled)
-                  </p>
-                </div>
-                <Switch checked disabled />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent> */}
     </Tabs>
   );
 }

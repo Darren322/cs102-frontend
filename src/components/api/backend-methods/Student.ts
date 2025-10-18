@@ -63,3 +63,11 @@ export function deleteStudent(studentId: string) {
     const response = api.delete(url + `${studentId}`)
     return response
 }
+
+export async function getcurrentStudent() {
+  const allStudentsResp = await api.get(url);
+  const allStudents = allStudentsResp.data;
+  const cur = allStudents.filter((s:any) => { return s.username == localStorage['username']});
+  console.log(`${url}/${cur[0]['studentId']}`)
+  return api.get(`${url}/${cur[0]['studentId']}`); 
+}

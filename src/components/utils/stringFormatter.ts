@@ -10,6 +10,20 @@ export function formatTime(currentDate: string) {
     });
 }
 
-export function formatDate(currentDate:string){
+export function formatDate(currentDate: string) {
     return new Date(currentDate).toLocaleDateString("en-GB");
+}
+
+export function formatDateTime(dtString: any) {
+    const date = new Date(dtString);
+    const formatted = date.toLocaleString("en-SG", {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+    });
+    console.log(formatted)
+    return formatted
 }

@@ -144,7 +144,7 @@ export default function EnrolPage() {
     return (
         <div className="min-h-screen bg-[#020617] mt-14 rounded-2xl px-auto items-center ml-auto mr-auto">
             <div className="mx-auto px-auto items-center ml-auto mr-auto">
-                <Card className="border-0 rounded-2xl w-[70%]">
+                <Card className="border-0 rounded-2xl w-[98%] h-[300px]">
                     <CardHeader>
                         <CardTitle className="text-2xl">Enrol for Class</CardTitle>
                         <CardDescription>Enrol yourself to a module</CardDescription>
@@ -191,7 +191,7 @@ export default function EnrolPage() {
 
 
                             {/* buttons stay as-is */}
-                            <div className="flex gap-4 pt-4">
+                            <div className="flex gap-4 pt-4 justify-end">
                                 <Button type="submit" className="" onClick={()=>{enrolStudent()}}>
                                     Enrol Student
                                 </Button>
