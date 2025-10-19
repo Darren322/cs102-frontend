@@ -10,6 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 //import { useToast } from "@/hooks/use-toast"
 import { X } from "lucide-react"
 import { getDropdownCourse } from "@/components/api/backend-methods/Courses"
+import { getMyStudent, getcurrentStudent } from "@/components/api/backend-methods/Student"
+import { createEnrollment } from "@/components/api/backend-methods/StudentEnrollment"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function EnrolPage() {
@@ -30,7 +32,42 @@ export default function EnrolPage() {
         const storedEmail = localStorage.getItem("userEmail") || ""
         setFormData((prev) => ({ ...prev, email: storedEmail }))
         const storedStudent = sessionStorage.getItem("studentId") || ""
-        if (storedStudent) {
+        // Try to fetch the current user's student record when a token exists.
+        const token = localStorage.getItem("token") || sessionStorage.getItem("token")
+        if (token) {
+            getMyStudent(token).then((resp) => {
+                if (resp?.data?.studentId) {
+                    // overwrite any stale studentId with the server value
+                    sessionStorage.setItem("studentId", resp.data.studentId)
+                    setFormData((prev) => ({ ...prev, studentId: resp.data.studentId }))
+                    return
+                }
+                // if /me returned no student, fall back to stored value (if any)
+                if (storedStudent) setFormData((prev) => ({ ...prev, studentId: storedStudent }))
+            }).catch((err) => {
+                // fallback: server might not support /me or token may not map — use stored value or try username-based lookup
+                console.warn("Could not fetch current student via /me, falling back:", err)
+                if (storedStudent) {
+                    setFormData((prev) => ({ ...prev, studentId: storedStudent }))
+                    return
+                }
+                try {
+                    const username = localStorage.getItem('username') || ''
+                    if (!username) return
+                    getcurrentStudent().then((resp) => {
+                        const all = resp?.data || []
+                        const found = all.find((s: any) => (s.username || s.email) === username)
+                        if (found && found.studentId) {
+                            sessionStorage.setItem('studentId', found.studentId)
+                            setFormData((prev) => ({ ...prev, studentId: found.studentId }))
+                        }
+                    }).catch((e) => console.warn('fallback getcurrentStudent failed', e))
+                } catch (e) {
+                    console.warn('fallback lookup failed', e)
+                }
+            })
+        } else if (storedStudent) {
+            // no token, but we have a stored studentId from earlier — show it
             setFormData((prev) => ({ ...prev, studentId: storedStudent }))
         }
     }, [])
@@ -122,21 +159,64 @@ export default function EnrolPage() {
         }
     }
     const enrolStudent = () =>{
-        console.log('enroled')
+        // use current studentId and selected course
+        const sidRaw = formData.studentId || sessionStorage.getItem('studentId')
+        const course = currentSelected
+        if (!sidRaw) {
+            console.warn('No studentId set, cannot enroll')
+            alert('No Student ID found. Please ensure you are logged in as a student.')
+            return
+        }
+        if (!course) {
+            console.warn('No course selected')
+            alert('Please select a course before enrolling.')
+            return
+        }
+        const token = (localStorage.getItem('token') || sessionStorage.getItem('token')) ?? undefined
+        const sid = sidRaw as string
+        
+        console.log('Attempting enrollment with:', { studentId: sid, courseCode: course })
+        
+        createEnrollment({ studentId: sid, courseCode: course }, token).then((resp) => {
+            console.log('Enrollment created successfully!', resp.data)
+            alert(`Successfully enrolled in ${course}!`)
+            setCurrentSelected("") // Clear selection after successful enrollment
+        }).catch((err) => {
+            console.error('Failed to create enrollment - Full error:', err)
+            console.error('Error response data:', err.response?.data)
+            console.error('Error status:', err.response?.status)
+            console.error('Error headers:', err.response?.headers)
+            console.error('Error message:', err.message)
+            
+            // Try to extract meaningful error message
+            let errorMsg = 'Unknown error occurred'
+            if (err.response?.data) {
+                if (typeof err.response.data === 'string') {
+                    errorMsg = err.response.data
+                } else if (err.response.data.message) {
+                    errorMsg = err.response.data.message
+                } else if (err.response.data.error) {
+                    errorMsg = err.response.data.error
+                } else {
+                    errorMsg = JSON.stringify(err.response.data)
+                }
+            }
+            
+            console.error('Parsed error message:', errorMsg)
+            alert(`Failed to enroll: ${errorMsg}`)
+        })
     }
 
 
 
     const [currentSelected, setCurrentSelected] = useState("")
-    const [allCourses, setAllCourses] = useState<any>([])
+    const [allCourses, setAllCourses] = useState<string[]>([])
     useEffect(() => {
         getDropdownCourse().then((response) => {
-            let responseData = response.data;
-            let currentCodes = responseData.map((data: any) => {
-                return data.courseCode;
-            })
+            const responseData = response.data as Array<{ courseCode: string }>;
+            const currentCodes = responseData.map((d) => d.courseCode)
             setAllCourses(currentCodes)
-        })
+        }).catch((e) => console.warn('Failed to load courses', e))
     }, [])
 
     console.log(allCourses)
@@ -176,7 +256,7 @@ export default function EnrolPage() {
                                             <SelectValue placeholder="Select a course" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {allCourses.map((course: any) => (
+                                            {allCourses.map((course: string) => (
                                                 <SelectItem key={course} value={course}>
                                                     {course}
                                                 </SelectItem>

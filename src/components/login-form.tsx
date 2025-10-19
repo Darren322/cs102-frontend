@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Eye, EyeOff, Lock, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { addNewStudent } from "@/components/api/backend-methods/Student";
+import { addNewStudent, getMyStudent } from "@/components/api/backend-methods/Student";
 import type { StudentPayload } from "@/components/api/backend-methods/Student";
 import {
   Field,
@@ -54,6 +54,8 @@ export function LoginForm({
       const storage = localStorage
       if (data.token) {
         storage.setItem("token", data.token);
+        // Clear any stale studentId from previous sessions — we'll fetch the correct one below
+  try { sessionStorage.removeItem("studentId") } catch { /* ignore */ }
         // If there's a pending student payload (from registration), try to enroll now
         try {
           const pendingJson = sessionStorage.getItem("pendingStudent");
@@ -94,6 +96,19 @@ export function LoginForm({
         } catch (err) {
           console.warn("Error handling pendingStudent", err);
         }
+            // After attempting pending enroll, fetch the canonical student record for this user
+            try {
+              const meResp = await getMyStudent(data.token);
+              if (meResp?.data?.studentId) {
+                sessionStorage.setItem("studentId", meResp.data.studentId);
+                setPendingEnrollIsError(false);
+                // optional: show a message only if we didn't already set one
+                if (!pendingEnrollMsg) setPendingEnrollMsg("Student record loaded.");
+              }
+            } catch (e) {
+              // if fetch fails it's non-blocking; page will fallback to stored value or show prompt
+              console.warn('Could not load /api/student/me after login', e);
+            }
       }
       storage.setItem("username", data.username ?? email);
       storage.setItem("role", data.role ?? role);

@@ -71,3 +71,10 @@ export async function getcurrentStudent() {
   console.log(`${url}/${cur[0]['studentId']}`)
   return api.get(`${url}/${cur[0]['studentId']}`); 
 }
+
+// Get the current authenticated user's student record. Requires Authorization header.
+export function getMyStudent(token?: string) {
+    const endpoint = `${url}/me`;
+    if (token) return api.get(endpoint, { headers: { Authorization: `Bearer ${token}` } });
+    return api.get(endpoint);
+}
