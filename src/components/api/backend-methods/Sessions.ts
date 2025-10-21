@@ -42,6 +42,7 @@ export function getActiveByCreator(){
 
 export function createSessions(sessionData : any){
     if(localStorage['username']!== undefined){
+        console.log(sessionData)
         const response = api.post(url, sessionData, {
         headers: {
           "Content-Type": "application/json",

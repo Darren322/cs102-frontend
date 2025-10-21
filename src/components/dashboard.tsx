@@ -4,7 +4,7 @@
 import { Play, Square, Upload, Users, XCircle, FileText, Clock, CircleDotDashed } from "lucide-react"
 import { useEffect, useState } from "react"
 import type { LiveProps } from "../components/utils/dashboard-types"
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { getAttendanceRecordForSession, getTotalAbsent, getTotalLate, getTotalMedical, getTotalPending, getTotalPresent, updateSingle } from "./api/backend-methods/AttendanceRecord";
 import { formatDate, stringFormatter } from "./utils/stringFormatter";
 
@@ -185,6 +185,7 @@ export function Live({
   const [totalPending, setTotalPending] = useState(0)
   const [totalMedical, setTotalMedical] = useState(0)
   const [totalAbsent, setTotalAbsent] = useState(0)
+  const navigate = useNavigate();
 
   getTotalPresent(p).then((response) => {
     setTotalPresent(response.data)
@@ -263,9 +264,11 @@ export function Live({
                     </button>
                   )}
 
-
-                  <Button onClick={stopSession} variant="outline">
-                    End Session
+                  <Button onClick={() => {
+                    stopSession();
+                    navigate(`/session_start/${p}`);
+                  }} variant="outline">
+                    End Recording
                   </Button>
                 </div>
               </div>

@@ -101,7 +101,7 @@ export default function EnrolPage() {
             //   })
             return
         }
-
+        
         const studentObject = {
             studentId: formData.studentId,
             username: formData.username || undefined,

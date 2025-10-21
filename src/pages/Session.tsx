@@ -80,8 +80,8 @@ export default function SessionsPage() {
   const [startDate, setStartDate] = useState<Date>()
   const [startTime, setStartTime] = useState("")
   const [endTime, setEndTime] = useState("")
-
-  // Initialize data
+  console.log(localStorage)
+  // Initialize data  
   useEffect(() => {
     getSessionByCreator().then((response) => {
       const sorted = [...response.data].sort((a, b) => {
@@ -94,7 +94,7 @@ export default function SessionsPage() {
     })
   }, [localStorage['username']])
 
-
+  
 
   const handleCreateSession = async () => {
     const formattedEndDate = (endDate as Date).toISOString().split("T")[0];
@@ -182,7 +182,7 @@ export default function SessionsPage() {
   const filteredData = sessionsByUser.filter((sess) => {
   const matchesStatus =
     statusFilter === "all"
-      ? sess.status !== "CLOSED"
+      ? true
       : sess.status === statusFilter
 
   const matchesSearch =

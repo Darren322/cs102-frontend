@@ -715,9 +715,17 @@ export default function SmartAttendanceSystem() {
 
   const closeSession = () => {
     if (!id) return;
-
     closeCourse(id).then((response) => {
       toast.success("Successfully set to Closed");
+      getCurrentSession(id).then((response) => {
+        setCurrentSession(response.data.sessionID);
+        console.log(response.data.active)
+        console.log(response.data.closed)
+        setIsCurrentActive(response.data.active)
+        setIsCurrentClosed(response.data.closed)
+      }).catch((err) => {
+        console.error(err)
+      })
       navigate(`/session_start/${id}`);
     }).catch((error) => {
       toast.error("Unable to set to close.")
@@ -791,7 +799,7 @@ export default function SmartAttendanceSystem() {
                 isCurrentClosed ? (
                   // Case 1: closed
                   <div className="grid grid-cols-1 gap-3">
-                    <ImportAttendanceButton sessionId={ id ?? "" }/>
+                    <ImportAttendanceButton sessionId={id ?? ""} />
                     <Button
                       onClick={() => setConfirmationDialog(true)}
                       className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/30 
@@ -1048,8 +1056,8 @@ export default function SmartAttendanceSystem() {
           <div className="flex space-x-4">
             <div className="w-[50%]">
               <Button
-                className=" bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-400/40 
-               rounded-2xl px-4 py-5 backdrop-blur-sm shadow-sm transition-all flex items-center justify-center gap-2"
+                className="bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-400/40 
+               rounded-2xl px-4 py-5 backdrop-blur-sm shadow-sm transition-all flex items-center justify-center gap-2 w-full"
                 onClick={() => { exportPDF() }}
               >
                 <File className="w-4 h-4" />
@@ -1066,7 +1074,6 @@ export default function SmartAttendanceSystem() {
                 CSV
               </Button>
             </div>
-
           </div>
 
           <DialogFooter className="flex justify-end gap-2">

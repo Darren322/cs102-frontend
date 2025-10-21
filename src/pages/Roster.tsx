@@ -144,15 +144,6 @@ export default function RostersPage() {
               Rosters for modules here.
             </CardDescription>
           </div>
-          {/* Might need a edit roster or something?? */}
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              className="bg-green-500/10 hover:bg-green-500/20 border-green-500/30 text-green-300 transition-all"
-            >
-              <Upload size={16} className="mr-2" /> Import CSV
-            </Button>
-          </div>
         </CardHeader>
       </Card>
 

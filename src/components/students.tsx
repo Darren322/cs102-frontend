@@ -93,7 +93,6 @@ export default function Students() {
                 <TableHead>Student ID</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Phone</TableHead>
-                <TableHead>Image</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -123,13 +122,6 @@ export default function Students() {
                     </TableCell>
                     <TableCell className="text-slate-400">
                       {record.phone}
-                    </TableCell>
-                    <TableCell>
-                      <img
-                        src={record.studentImage}
-                        alt={record.studentName}
-                        className="w-[80px] h-[80px] rounded-lg object-cover border border-slate-800 shadow-sm"
-                      />
                     </TableCell>
                   </TableRow>
                 ))

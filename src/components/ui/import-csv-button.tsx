@@ -2,7 +2,7 @@ import React, { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import Papa from "papaparse";
 import { Upload } from "lucide-react";
-import { updateSingle } from "../api/backend-methods/AttendanceRecord"; 
+import { updateSingle } from "../api/backend-methods/AttendanceRecord";
 
 interface AttendanceUpdateRequest {
   studentId: string;
@@ -31,16 +31,17 @@ const ImportAttendanceButton: React.FC<ImportAttendanceButtonProps> = ({
     try {
       const records = await parseAttendanceCSV(file);
       console.log("📦 Parsed records:", records);
-
-      // ⚙️ Parallel upload using your API helper
       const results = await Promise.allSettled(
-        records.map((record) =>
-          updateSingle(sessionId, record.studentId, {
-            status: record.status,
-            method: record.method,
-            optionalNotes: record.optionalNotes,
-            recordedBy: record.recordedBy,
+        records.map(({ studentId, ...rest }) => {
+          updateSingle(sessionId, studentId, {
+            status: rest.status,
+            method: rest.method,
+            optionalNotes: rest.optionalNotes,
+            recordedBy: rest.recordedBy
           })
+            .then(res => console.log(res))
+            .catch(err => console.log(err))
+        }
         )
       );
 
@@ -88,31 +89,23 @@ const ImportAttendanceButton: React.FC<ImportAttendanceButtonProps> = ({
 
 export default ImportAttendanceButton;
 
-/* 🔍 Helper: Parse and clean attendance CSV */
 const parseAttendanceCSV = async (file: File): Promise<AttendanceUpdateRequest[]> => {
-  // 1. Read the file as text first
   const csvText = await file.text();
-
-  // 2. Split into lines, remove the first line (the title), and join back
   const lines = csvText.split('\n');
   const csvWithoutTitle = lines.slice(1).join('\n');
 
   return new Promise((resolve, reject) => {
-    // 3. Parse the modified CSV text
     Papa.parse(csvWithoutTitle, {
       header: true,
       skipEmptyLines: true,
       encoding: "utf-8",
       complete: (results) => {
         const rows = results.data as any[];
-        
-        // Helper to get a cell value, ignoring case/whitespace in the header
         const getCellValue = (row: any, headerName: string) => {
           const actualHeader = Object.keys(row).find(key => key.trim().toLowerCase() === headerName.toLowerCase());
           return actualHeader ? row[actualHeader] : undefined;
         };
 
-        // Filter only valid rows
         const validRows = rows.filter((r) => {
           const sid = getCellValue(r, "SID");
           const status = getCellValue(r, "Status");
@@ -124,8 +117,7 @@ const parseAttendanceCSV = async (file: File): Promise<AttendanceUpdateRequest[]
             !sid.toString().includes("Report")
           );
         });
-        
-        // Map to backend payload format
+
         const formatted = validRows.map((r) => ({
           studentId: (getCellValue(r, "SID") || "").trim(),
           status: (getCellValue(r, "Status") || "ABSENT").trim(),
@@ -133,10 +125,10 @@ const parseAttendanceCSV = async (file: File): Promise<AttendanceUpdateRequest[]
           optionalNotes: (getCellValue(r, "Remarks") || "").trim(),
           recordedBy: "system",
         }));
-        
+
         resolve(formatted);
       },
-      error: (err) => reject(err),
+      error: (err: any) => reject(err),
     });
   });
 };
