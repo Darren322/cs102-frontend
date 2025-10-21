@@ -22,6 +22,7 @@ import { batchMark } from "@/components/api/backend-methods/AttendanceRecord";
 import { toast } from "sonner";
 import { csvExport, pdfExport } from "@/components/api/backend-methods/pdf-csv";
 import { automaticMark } from "@/components/api/backend-methods/AttendanceRecord";
+import ImportAttendanceButton from "@/components/ui/import-csv-button";
 
 // Types for events and attendance records
 type PresentEvent = {
@@ -790,6 +791,7 @@ export default function SmartAttendanceSystem() {
                 isCurrentClosed ? (
                   // Case 1: closed
                   <div className="grid grid-cols-1 gap-3">
+                    <ImportAttendanceButton sessionId={ id ?? "" }/>
                     <Button
                       onClick={() => setConfirmationDialog(true)}
                       className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/30 
