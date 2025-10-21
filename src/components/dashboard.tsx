@@ -216,10 +216,10 @@ export function Live({
   return (
     <div
       className={cn(
-        "relative w-full overflow-y-auto min-h-screen flex flex-col justify-start",
+        "relative w-full overflow-y-auto n flex flex-col justify-start",
         "bg-[radial-gradient(ellipse_at_bottom,theme(colors.slate.900)_0%,theme(colors.slate.950)_100%)]",
         "",
-        "flex flex-col justify-start min-h-screen"
+        "flex flex-col justify-start"
 
       )}
     >
