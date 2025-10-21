@@ -14,8 +14,8 @@ export type Direction =
     | "STRAIGHT"
     | "NO_FACE";
 const PITCH_UP_THRESHOLD = 100;
-const PITCH_DOWN_THRESHOLD = 136;
-const YAW_RIGHT_THRESHOLD = 60;
+const PITCH_DOWN_THRESHOLD = 130;
+const YAW_RIGHT_THRESHOLD = 75;
 const YAW_LEFT_THRESHOLD = 95;
 
 const FLIP_YAW = false;
@@ -31,8 +31,8 @@ export function setStraightCenter(yaw: number, pitch: number) {
 }
 
 // Make the deltas reasonable again (50 is basically "always straight")
-export const STRAIGHT_DELTA_YAW = 28;   // 10–18 is a good range
-export const STRAIGHT_DELTA_PITCH = 80;
+export const STRAIGHT_DELTA_YAW = 30;   // 10–18 is a good range
+export const STRAIGHT_DELTA_PITCH = 85;
 
 // Center-aware straight check
 export function isStraight(yaw: number, pitch: number) {
