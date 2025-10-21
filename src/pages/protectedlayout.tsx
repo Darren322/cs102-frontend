@@ -19,9 +19,7 @@ export default function ProtectedLayout() {
     <SidebarProvider>
       <AppSidebar />
       <SidebarTrigger className="hover:cursor-pointer hover:scale-110"/>
-      <main className="w-full ">
-        
-        
+      <main className="w-full flex-1 min-w-0 overflow-x-hidden">
          <Outlet/>
       </main>
     </SidebarProvider>

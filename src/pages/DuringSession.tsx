@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, Upload, Plus, SettingsIcon, Users, Clock, User, Highlighter, File, FileSpreadsheet } from "lucide-react";
+import { Camera, Upload, SettingsIcon, Users, Clock, User, Highlighter, File, FileSpreadsheet } from "lucide-react";
 import { Live } from "../components/dashboard";
 import { Session } from "../components/sessions";
 import { Settings } from "../components/settings";
@@ -773,9 +773,9 @@ export default function SmartAttendanceSystem() {
   }
   const [confirmationDialog, setConfirmationDialog] = useState(false)
   return (
-    <div className="flex h-screen bg-slate-950 text-white">
-      <div className="flex-1">
-        <div className="h-full overflow-y-auto">
+    <div className="flex bg-slate-950 text-white overflow-x-hidden">
+      <div className="flex-1 min-w-0">
+        <div className="w-full min-w-0">
           <Card className="bg-slate-900/50 border-slate-800/50 rounded-2xl shadow-xl backdrop-blur-sm mx-8 mt-6">
             <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-4 md:space-y-0 px-6 py-5">
               <div>
@@ -794,8 +794,8 @@ export default function SmartAttendanceSystem() {
                     <ImportAttendanceButton sessionId={ id ?? "" }/>
                     <Button
                       onClick={() => setConfirmationDialog(true)}
-                      className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/30
-          font-medium rounded-2xl px-4 py-2 backdrop-blur-sm shadow-sm transition-all"
+                      className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/30 
+          font-medium rounded-lg px-4 py-2 backdrop-blur-sm shadow-sm transition-all"
                     >
                       <Upload size={18} className="mr-2" />
                       Export
@@ -853,7 +853,7 @@ export default function SmartAttendanceSystem() {
 
             </CardHeader>
           </Card>
-          <div className="w-full">
+          <div className="">
             {activeTab === "dashboard" && (
               <Live
                 sessionActive={sessionActive}
@@ -1048,7 +1048,7 @@ export default function SmartAttendanceSystem() {
           <div className="flex space-x-4">
             <div className="w-[50%]">
               <Button
-                className="w-full bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-400/40 
+                className=" bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-400/40 
                rounded-2xl px-4 py-5 backdrop-blur-sm shadow-sm transition-all flex items-center justify-center gap-2"
                 onClick={() => { exportPDF() }}
               >

@@ -38,7 +38,7 @@ export default function AttendanceDetails() {
 
     if (loading) {
         return (
-            <div className="flex h-screen items-center justify-center bg-gray-50">
+            <div className="flex items-center justify-center bg-gray-50">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
                     <p className="mt-4 text-gray-600">Loading attendance records...</p>
@@ -49,7 +49,7 @@ export default function AttendanceDetails() {
 
     if (!currentRecord) {
         return (
-            <div className="flex h-screen items-center justify-center bg-gray-50">
+            <div className="flex items-center justify-center bg-gray-50">
                 <div className="text-center">
                     <Users size={48} className="mx-auto text-gray-400 mb-4" />
                     <h3 className="text-lg font-semibold text-gray-800 mb-2">Record Not Found</h3>
@@ -61,7 +61,7 @@ export default function AttendanceDetails() {
     }
 
     return (
-        <div className="flex h-screen w-screen bg-gray-50">
+        <div className="flex bg-gray-50">
             <div className="flex-1 overflow-hidden">
                 <div className="h-full overflow-y-auto">
                     <div className="bg-white border-b border-gray-200 px-6 py-[34px]">
