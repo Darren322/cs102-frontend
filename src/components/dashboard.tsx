@@ -87,7 +87,6 @@ export function Live({
   const [localRecords, setLocalRecords] = useState(attendanceRecords);
   const [isCurrentSessionClosed, setCurrentClose] = useState(false);
 
-  // Sanitize present list to avoid null/invalid entries
   const safePresentList = useMemo(
     () =>
       (presentList ?? []).filter(
@@ -97,7 +96,6 @@ export function Live({
     [presentList]
   );
 
-  // When recognition stops while active, add a demo auto record (your prev behavior)
   useEffect(() => {
     if (!running && sessionActive && currentSessionId) {
       const autoRecord = {
@@ -216,6 +214,7 @@ export function Live({
 
   const navigate = useNavigate();
 
+
   return (
     <div
       className={cn(
@@ -307,6 +306,7 @@ export function Live({
                           playsInline
                           className={cn("rounded-md border border-border w-full", running ? "hidden" : "block")}
                         />
+                        {/* Image code over here. */}
                         <img
                           ref={serverImgRef}
                           width={WIDTH}

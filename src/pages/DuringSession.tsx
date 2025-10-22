@@ -108,10 +108,11 @@ export default function SmartAttendanceSystem() {
   const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
   const [cameraLoading, setCameraLoading] = useState(false);
   const [cameraErr, setCameraErr] = useState<string | null>(null);
+  const [marked, setMarked] = useState(false);
 
   // Safely attach a new stream to the <video>
   const setStreamSafely = useCallback(async (video: HTMLVideoElement, newStream: MediaStream) => {
-    try { await video.pause(); } catch {}
+    try { await video.pause(); } catch { }
     video.srcObject = null;
     video.srcObject = newStream;
     (video as any).playsInline = true;
@@ -298,7 +299,30 @@ export default function SmartAttendanceSystem() {
 
       // Send to backend (normalized to { dets, imageJpegBase64 })
       const result = await scanPhoto({ file, sessionId: currentSession });
+      console.log(result)
+
       const dets = (result as any).dets ?? result ?? [];
+      const curpl = (dets as any[])
+        .filter((d) => d?.studentId && d?.studentId.toLowerCase() !== "unknown" && d?.confidence >= 80)
+        .map((d) => ({
+          studentId: d.studentId,
+          confidence: d.confidence,
+          timestamp: new Date().toISOString(),
+          recordedBy: localStorage['username']
+        }));
+      try {
+        if (curpl.length) {
+          console.log(currentSession, curpl)
+          const res = await automaticMark(currentSession, curpl);
+          console.log("✅ Auto-marked successfully:", res);
+          toast.success(`Auto-marked ${curpl.length} student(s)`);
+        }
+      } catch (e) {
+        console.error("❌ Auto-marking failed:", e);
+        errorRef.current = String(e);
+        toast.error(errorRef.current);
+      }
+      console.log(dets)
       const imageJpegBase64: string | undefined = (result as any).imageJpegBase64;
 
       // If backend returns annotated image, draw that instead (REPLACE)
@@ -413,7 +437,7 @@ export default function SmartAttendanceSystem() {
 
   // Keep camera list fresh on device changes
   useEffect(() => {
-    const handler = () => { refreshCameras().catch(() => {}); };
+    const handler = () => { refreshCameras().catch(() => { }); };
     if (navigator.mediaDevices?.addEventListener) {
       navigator.mediaDevices.addEventListener("devicechange", handler);
     } else {
@@ -487,7 +511,7 @@ export default function SmartAttendanceSystem() {
       errorRef.current = "WebSocket error";
       toast.error(errorRef.current);
     };
-    ws.onclose = () => {};
+    ws.onclose = () => { };
 
     // Start recv FPS ticker on connect
     recvFpsTimerRef.current = window.setInterval(() => {
@@ -877,7 +901,7 @@ export default function SmartAttendanceSystem() {
               setShowManualEntry={setShowManualEntry}
               stopSession={stopSession}
               handleFileUpload={handleFileUpload}
-              handleManualEntry={() => {}}
+              handleManualEntry={() => { }}
               updateRecord={updateRecord}
               setEditingRecord={setEditingRecord}
               fps={fps}
@@ -955,7 +979,7 @@ export default function SmartAttendanceSystem() {
             </DialogDescription>
           </DialogHeader>
 
-        <div className="space-y-4 py-2">
+          <div className="space-y-4 py-2">
             {cameraErr && <div className="text-red-400 text-sm">{cameraErr}</div>}
 
             <div className="flex items-center gap-2">

@@ -2,6 +2,7 @@
 
 export type Det = { name?: string; confidence?: number };
 export type DetsResponse = {
+  filter(arg0: (d: any) => any): unknown;
   dets: Det[];
   imageJpegBase64?: string; // optional annotated image
 };
