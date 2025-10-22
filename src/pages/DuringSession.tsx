@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Camera, Upload, SettingsIcon, Users, Clock, User, Highlighter, File, FileSpreadsheet } from "lucide-react";
+import { Camera, Upload, SettingsIcon, Users, Clock, User, Highlighter, File, FileSpreadsheet, Loader2 } from "lucide-react";
 import { Live } from "../components/dashboard";
 
 import { Card, CardHeader } from "@/components/ui/card";
@@ -753,8 +753,10 @@ export default function SmartAttendanceSystem() {
   };
 
   const navigate = useNavigate();
+  const [loading, isLoading] = useState(false);
 
   const closeSession = () => {
+    isLoading(true)
     if (!id) return;
     closeCourse(id)
       .then(() => {
@@ -822,7 +824,7 @@ export default function SmartAttendanceSystem() {
                   <Button
                     onClick={() => setConfirmationDialog(true)}
                     className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/30 
-                    font-medium rounded-lg px-4 py-2 backdrop-blur-sm shadow-sm transition-all"
+                    font-medium px-2 py-2 backdrop-blur-sm shadow-sm transition-all rounded-2xl"
                   >
                     <Upload size={18} className="mr-2" />
                     Export
@@ -866,11 +868,18 @@ export default function SmartAttendanceSystem() {
 
                   <Button
                     onClick={closeSession}
+                    disabled={loading}
                     className="bg-red-500/20 hover:bg-red-500/30 text-red-300 font-semibold px-4 py-5 border border-red-400/40 backdrop-blur-sm 
                     shadow-sm transition-all rounded-2xl"
                   >
                     <Highlighter size={18} className="mr-2" />
-                    Close Session
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Closing...
+                      </>
+                    ) : (
+                      "Close Session"
+                    )}
                   </Button>
                 </div>
               )}

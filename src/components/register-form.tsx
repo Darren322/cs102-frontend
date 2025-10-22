@@ -10,6 +10,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 // optional: set VITE_API_URL=http://localhost:8081 in your frontend .env
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8081";
@@ -128,7 +129,8 @@ export function RegisterForm({
 
         // For non-student (staff), keep previous behavior and log them in
         sessionStorage.setItem("token", data.token);
-        navigate((data.role ?? role) === "STAFF" ? "/dashboard" : "/dashboard");
+        navigate((data.role ?? role) === "STAFF" ? "/login" : "/login");
+        toast.success('Successfully made account, time to login.')
         return;
       }
 
@@ -216,7 +218,7 @@ export function RegisterForm({
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               autoComplete="name"
-              className="pl-9 bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-slate-600"
+              className="pl-9 bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-slate-600 rounded-2xl"
             />
           </div>
         </Field>
@@ -238,7 +240,7 @@ export function RegisterForm({
                 onChange={(e) => setStudentId(e.target.value)}
                 onBlur={() => setStudentIdTouched(true)}
                 autoComplete="off"
-                className="pl-9 bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-slate-600"
+                className="pl-9 bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-slate-600 roundex-2xl"
               />
             </div>
             {/* Inline validation */}
@@ -263,7 +265,7 @@ export function RegisterForm({
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="username"
-              className="pl-9 bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-slate-600"
+              className="pl-9 bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-slate-600 rounded-2xl"
             />
           </div>
         </Field>
@@ -283,7 +285,7 @@ export function RegisterForm({
               required
               autoComplete="new-password"
               placeholder="••••••••"
-              className="pl-9 pr-10 bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-slate-600"
+              className="pl-9 pr-10 bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-slate-600 rounded-2xl"
             />
             <button
               type="button"
@@ -320,7 +322,7 @@ export function RegisterForm({
               required
               autoComplete="new-password"
               placeholder="••••••••"
-              className="pl-9 pr-10 bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-slate-600"
+              className="pl-9 pr-10 bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-slate-600 rounded-2xl"
             />
             <button
               type="button"
@@ -341,7 +343,7 @@ export function RegisterForm({
           <Button
             type="submit"
             disabled={loading}
-            className="w-full bg-slate-700 hover:bg-slate-600 text-slate-50"
+            className="w-full bg-slate-700 hover:bg-slate-600 text-slate-50 rounded-2xl"
           >
             {loading ? "Creating account…" : "Create Account"}
           </Button>

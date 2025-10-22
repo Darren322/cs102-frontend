@@ -78,7 +78,7 @@ const ImportAttendanceButton: React.FC<ImportAttendanceButtonProps> = ({
         onClick={handleButtonClick}
         disabled={loading}
         className="ml-2 bg-green-500/20 hover:bg-green-500/30 text-green-300 border border-green-400/30
-                   font-medium rounded-2xl px-4 py-2 backdrop-blur-sm shadow-sm transition-all flex items-center"
+                   font-medium rounded-2xl px-4 py-2 backdrop-blur-sm shadow-sm transition-all flex items-center ml-0"
       >
         <Upload size={18} className="mr-2" />
         {loading ? "Importing..." : "Import CSV"}

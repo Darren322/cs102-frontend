@@ -99,6 +99,7 @@ const [sidebarItems, setSidebarItems] = useState<any>([]);
 
 useEffect(() => {
   const username = localStorage['role'];
+  console.log(username)
 
   if (username === "STAFF") {
     setSidebarItems([

@@ -112,7 +112,7 @@ export function LoginForm({
       }
       storage.setItem("username", data.username ?? email);
       storage.setItem("role", data.role ?? role);
-
+      console.log(data)
       if(data.role == "STAFF"){
         // small delay to allow pending message to display if any
         navigate("/dashboard");
@@ -213,7 +213,7 @@ export function LoginForm({
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="username"
-              className="pl-9 bg-slate-950 rounded-2xl border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-slate-600"
+              className="pl-9 bg-slate-950 rounded-2xl border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-slate-600 rounded-2xl"
             />
           </div>
         </Field>
