@@ -1,38 +1,66 @@
-// src/components/Live.tsx
-"use client"
+"use client";
 
-import { Play, Square, Upload, Users, XCircle, FileText, Clock, CircleDotDashed } from "lucide-react"
-import { useEffect, useState } from "react"
-import type { LiveProps } from "../components/utils/dashboard-types"
+import { Play, Square, Upload, Users, XCircle, FileText, Clock, CircleDotDashed } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getAttendanceRecordForSession, getTotalAbsent, getTotalLate, getTotalMedical, getTotalPending, getTotalPresent, updateSingle } from "./api/backend-methods/AttendanceRecord";
+
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
+import {
+  getAttendanceRecordForSession,
+  getTotalAbsent,
+  getTotalLate,
+  getTotalMedical,
+  getTotalPending,
+  getTotalPresent,
+  updateSingle
+} from "./api/backend-methods/AttendanceRecord";
+import { getCurrentSession } from "./api/backend-methods/Sessions";
 import { formatDate, stringFormatter } from "./utils/stringFormatter";
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-  TableCaption,
-} from "@/components/ui/table"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { getCurrentSession } from "./api/backend-methods/Sessions";
-
-
+// NOTE: We accept a flexible props object to avoid type mismatches with parent.
+// If you have a shared LiveProps type, you can swap it in here (make err optional).
+type Props = {
+  sessionActive: boolean;
+  currentSessionId: string;
+  recognitionMode: "live" | "upload" | null;
+  running: boolean;
+  isSubmitted: boolean;
+  presentList: Array<{ name: string; since: number }>;
+  attendanceRecords: any[];
+  videoRef: React.RefObject<HTMLVideoElement>;
+  serverImgRef: React.RefObject<HTMLImageElement>;
+  captureRef: React.RefObject<HTMLCanvasElement>;
+  fileInputRef: React.RefObject<HTMLInputElement>;
+  uploadCanvasRef: React.RefObject<HTMLCanvasElement>; // <-- added
+  WIDTH: number;
+  HEIGHT: number;
+  setRunning: (v: boolean) => void;
+  stopSession: () => void;
+  handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  // optional/extra props coming from parent – ignored safely if not provided
+  setActiveTab?: (v: string) => void;
+  setShowManualEntry?: (v: boolean) => void;
+  handleManualEntry?: () => void;
+  updateRecord?: (id: string, field: string, value: any) => void;
+  setEditingRecord?: (id: string | null) => void;
+  editingRecord?: string | null;
+  showManualEntry?: boolean;
+  manualStudentId?: string;
+  manualRemarks?: string;
+  // fps
+  fps?: number;
+  recvFps?: number;
+  // err is removed; if you still want it, make it optional
+  err?: string;
+};
 
 export function Live({
   sessionActive,
@@ -43,61 +71,34 @@ export function Live({
   err,
   presentList,
   attendanceRecords,
-  editingRecord,
   videoRef,
   serverImgRef,
   captureRef,
   fileInputRef,
+  uploadCanvasRef,   // <-- receive from parent
   WIDTH,
   HEIGHT,
   setRunning,
   stopSession,
-  handleFileUpload,
-  handleManualEntry, // (kept if you wire it externally)
-  updateRecord,
-  setEditingRecord,
-
-  // NEW: incoming FPS values
+  handleFileUpload, // <-- parent handles drawing + marking
   fps,
   recvFps,
-}: LiveProps) {
-  const [showManualEntry, setShowManualEntry] = useState(false)
-  const [manualStudentId, setManualStudentId] = useState("")
-  const [manualRemarks, setManualRemarks] = useState("")
-  const [localRecords, setLocalRecords] = useState(attendanceRecords)
-  const [isCurrentSessionClosed, setCurrentClose] = useState(false)
-  const updateLocalRecord = (id: string, field: string, value: any) => {
-    setLocalRecords(prev => prev.map(r => (r.id === id ? { ...r, [field]: value } : r)))
-  }
+}: Props) {
+  const [localRecords, setLocalRecords] = useState(attendanceRecords);
+  const [isCurrentSessionClosed, setCurrentClose] = useState(false);
 
-  const handleLocalAdd = () => {
-    if (!manualStudentId.trim()) return
+  // Sanitize present list to avoid null/invalid entries
+  const safePresentList = useMemo(
+    () =>
+      (presentList ?? []).filter(
+        (p): p is { name: string; since: number } =>
+          !!p && typeof (p as any).name === "string" && (p as any).name.length > 0
+      ),
+    [presentList]
+  );
 
-    const newRecord = {
-      id: `REC_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-      sessionId: currentSessionId,
-      studentId: manualStudentId,
-      timestamp: Date.now(),
-      confidence: 100,
-      markingType: "manual",
-      status: "present",
-      remarks: manualRemarks,
-    }
-
-    // Prevent duplicates
-    if (localRecords.some(r => r.studentId === manualStudentId && r.sessionId === currentSessionId)) {
-      alert("Student already marked present!")
-      return
-    }
-
-    setLocalRecords(prev => [newRecord, ...prev])
-    setManualStudentId("")
-    setManualRemarks("")
-    setShowManualEntry(false)
-  }
-
+  // When recognition stops while active, add a demo auto record (your prev behavior)
   useEffect(() => {
-    // Only run this when session goes from active → inactive
     if (!running && sessionActive && currentSessionId) {
       const autoRecord = {
         id: `REC_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
@@ -108,39 +109,74 @@ export function Live({
         markingType: "automatic",
         status: "present",
         remarks: "Auto-marked when recognition stopped",
-      }
-
-      setLocalRecords(prev => [autoRecord, ...prev])
+      };
+      setLocalRecords((prev) => [autoRecord, ...prev]);
     }
-  }, [running])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running]);
+
   const p = useParams().id;
-  const [currentAttendanceRecords, setCurrentAttendanceRecords] = useState<any>([]);
+  const [currentAttendanceRecords, setCurrentAttendanceRecords] = useState<any[]>([]);
+  const [currentSessionDet, setCurrentSessionDet] = useState<any>({}); // guard against undefined.course
+
   useEffect(() => {
-    getAttendanceRecordForSession(p).then((res) => {
-      setCurrentAttendanceRecords(res.data);
-    }).catch((error) => {
-      console.error(error);
-    })
-  }, [p, isSubmitted])
-  const [currentSessionDet, setCurrentSessionDet] = useState<any>([])
+    if (!p) return;
+    getAttendanceRecordForSession(p)
+      .then((res) => {
+        console.log(res.data);
+        setCurrentAttendanceRecords(res.data)
+      })
+      .catch(console.error);
+  }, [p, isSubmitted]);
+
   useEffect(() => {
-    getCurrentSession(p).then((response) => {
-      setCurrentSessionDet(response.data)
-      setCurrentClose(response.data.closed)
-    }).catch((err) => {
-      console.error(err)
-    })
-  }, [p])
+    if (!p) return;
+    getCurrentSession(p)
+      .then((response) => {
+        setCurrentSessionDet(response.data);
+        setCurrentClose(response.data.closed);
+      })
+      .catch(console.error);
+  }, [p]);
+
+  // Totals — moved into an effect so they don’t refetch every render
+  const [totalPresent, setTotalPresent] = useState(0);
+  const [totalLate, setTotalLate] = useState(0);
+  const [totalPending, setTotalPending] = useState(0);
+  const [totalMedical, setTotalMedical] = useState(0);
+  const [totalAbsent, setTotalAbsent] = useState(0);
+
+  useEffect(() => {
+    if (!p) return;
+    let alive = true;
+    (async () => {
+      try {
+        const [pres, late, pend, med, abs] = await Promise.all([
+          getTotalPresent(p),
+          getTotalLate(p),
+          getTotalPending(p),
+          getTotalMedical(p),
+          getTotalAbsent(p),
+        ]);
+        if (!alive) return;
+        setTotalPresent(pres.data ?? 0);
+        setTotalLate(late.data ?? 0);
+        setTotalPending(pend.data ?? 0);
+        setTotalMedical(med.data ?? 0);
+        setTotalAbsent(abs.data ?? 0);
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [p, isSubmitted]);
 
   const [editingRows, setEditingRows] = useState<{ [id: string]: boolean }>({});
-
   const toggleEditRow = (id: string) => {
-    setEditingRows(prev => ({
-      ...prev,
-      [id]: !prev[id], // toggle only that row
-    }));
+    setEditingRows((prev) => ({ ...prev, [id]: !prev[id] }));
   };
-
 
   const handleSingleUpdate = async (sessionId: string, studentId: string) => {
     try {
@@ -157,62 +193,28 @@ export function Live({
         optionalNotes: recordToUpdate.optionalNotes || "",
         recordedBy: localStorage.getItem("username") || "unknown",
       };
-      updateSingle(sessionId, studentId, payload).then((response) => {
-        setEditingRows((prev) => ({
-          ...prev,
-          [recordToUpdate.attendanceId]: false,
-        }));
-        let newDate = new Date().toISOString()
-        setCurrentAttendanceRecords((prev: any) =>
-          prev.map((r: any) =>
-            r.attendanceId === recordToUpdate.attendanceId
-              ? { ...r, ...payload, timestamp: newDate }
-              : r
-          )
-        );
-
-      }).catch((error) => {
-        console.error(error)
-      })
-
+      await updateSingle(sessionId, studentId, payload);
+      setEditingRows((prev) => ({ ...prev, [recordToUpdate.attendanceId]: false }));
+      const newDate = new Date().toISOString();
+      setCurrentAttendanceRecords((prev: any) =>
+        prev.map((r: any) =>
+          r.attendanceId === recordToUpdate.attendanceId ? { ...r, ...payload, timestamp: newDate } : r
+        )
+      );
     } catch (error) {
       console.error("❌ Failed to update record:", error);
     }
   };
 
-  const [totalPresent, setTotalPresent] = useState(0)
-  const [totalLate, setTotalLate] = useState(0)
-  const [totalPending, setTotalPending] = useState(0)
-  const [totalMedical, setTotalMedical] = useState(0)
-  const [totalAbsent, setTotalAbsent] = useState(0)
-  const navigate = useNavigate();
-
-  getTotalPresent(p).then((response) => {
-    setTotalPresent(response.data)
-  })
-  getTotalLate(p).then((response) => {
-    setTotalLate(response.data)
-  })
-
-  getTotalPending(p).then((response) => {
-    setTotalPending(response.data)
-  })
-  getTotalMedical(p).then((response) => {
-    setTotalMedical(response.data)
-  })
-  getTotalAbsent(p).then((response) => {
-    setTotalAbsent(response.data)
-  })
-
   const statCards = [
-    { label: 'Present', count: totalPresent, icon: Users, color: 'bg-green-500', bgColor: 'bg-green-500/10', borderColor: 'border-green-500/20' },
-    { label: 'Late', count: totalLate, icon: Clock, color: 'bg-yellow-500', bgColor: 'bg-yellow-500/10', borderColor: 'border-yellow-500/20' },
-    { label: 'Absent', count: totalAbsent, icon: XCircle, color: 'bg-red-500', bgColor: 'bg-red-500/10', borderColor: 'border-red-500/20' },
-    { label: 'MC', count: totalMedical, icon: FileText, color: 'bg-blue-500', bgColor: 'bg-blue-500/10', borderColor: 'border-blue-500/20' },
-    { label: 'Pending', count: totalPending, icon: CircleDotDashed, color: 'bg-slate-500', bgColor: 'bg-slate-500/10', borderColor: 'border-slate-500/20' },
+    { label: "Present", count: totalPresent, icon: Users, color: "bg-green-500", bgColor: "bg-green-500/10", borderColor: "border-green-500/20" },
+    { label: "Late", count: totalLate, icon: Clock, color: "bg-yellow-500", bgColor: "bg-yellow-500/10", borderColor: "border-yellow-500/20" },
+    { label: "Absent", count: totalAbsent, icon: XCircle, color: "bg-red-500", bgColor: "bg-red-500/10", borderColor: "border-red-500/20" },
+    { label: "MC", count: totalMedical, icon: FileText, color: "bg-blue-500", bgColor: "bg-blue-500/10", borderColor: "border-blue-500/20" },
+    { label: "Pending", count: totalPending, icon: CircleDotDashed, color: "bg-slate-500", bgColor: "bg-slate-500/10", borderColor: "border-slate-500/20" },
   ];
 
-  console.log(currentSessionDet)
+  const navigate = useNavigate();
 
   return (
     <div
@@ -221,19 +223,26 @@ export function Live({
         "bg-[radial-gradient(ellipse_at_bottom,theme(colors.slate.900)_0%,theme(colors.slate.950)_100%)]",
         "",
         "flex flex-col justify-start"
-
       )}
     >
       <div className="space-y-6">
-
         {sessionActive && (
           <Card className="bg-slate-900/50 border-slate-800/50 rounded-2xl shadow-xl backdrop-blur-sm mx-8 mt-6">
             <CardHeader className="pb-3 pt-4 px-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <CardTitle className="text-lg">Course Name: {currentSessionDet.course.courseName} {currentSessionDet.course.courseCode}</CardTitle>
+                  <CardTitle className="text-lg">
+                    {/* guard currentSessionDet.course */}
+                    Course Name:{" "}
+                    {(currentSessionDet?.course?.courseName ?? "-")} {(currentSessionDet?.course?.courseCode ?? "")}
+                  </CardTitle>
                   <CardDescription className="space-y-0.5">
-                    <p>Session Date: <span className="font-medium text-foreground">{formatDate(currentSessionDet.date)}</span></p>
+                    <p>
+                      Session Date:{" "}
+                      <span className="font-medium text-foreground">
+                        {currentSessionDet?.date ? formatDate(currentSessionDet.date) : "-"}
+                      </span>
+                    </p>
                     <p className="text-sm">
                       Mode: <span className="font-medium">{recognitionMode?.toUpperCase()}</span>
                     </p>
@@ -254,25 +263,28 @@ export function Live({
                   {recognitionMode === "live" && (
                     <button
                       onClick={() => setRunning(!running)}
-                      className={`flex items-center px-4 py-2 rounded-lg transition-colors ${running
-                        ? "bg-red-600 text-white hover:bg-red-700"
-                        : "bg-green-600 text-white hover:bg-green-700"
-                        }`}
+                      className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
+                        running ? "bg-red-600 text-white hover:bg-red-700" : "bg-green-600 text-white hover:bg-green-700"
+                      }`}
                     >
                       {running ? <Square size={18} className="mr-2" /> : <Play size={18} className="mr-2" />}
                       {running ? "Stop Recognition" : "Start Recognition"}
                     </button>
                   )}
 
-                  <Button onClick={() => {
-                    stopSession();
-                    navigate(`/session_start/${p}`);
-                  }} variant="outline">
+                  <Button
+                    onClick={() => {
+                      stopSession();
+                      navigate(`/session_start/${p}`);
+                    }}
+                    variant="outline"
+                  >
                     End Recording
                   </Button>
                 </div>
               </div>
 
+              {/* err is optional and generally unused now */}
               {err && (
                 <Alert variant="destructive" className="mt-4">
                   <AlertDescription>{err}</AlertDescription>
@@ -293,19 +305,13 @@ export function Live({
                           autoPlay
                           muted
                           playsInline
-                          className={cn(
-                            "rounded-md border border-border w-full",
-                            running ? "hidden" : "block"
-                          )}
+                          className={cn("rounded-md border border-border w-full", running ? "hidden" : "block")}
                         />
                         <img
                           ref={serverImgRef}
                           width={WIDTH}
                           height={HEIGHT}
-                          className={cn(
-                            "rounded-md border border-border w-full",
-                            running ? "block" : "hidden"
-                          )}
+                          className={cn("rounded-md border border-border w-full", running ? "block" : "hidden")}
                           alt="Recognition feed"
                         />
                         <canvas ref={captureRef} className="hidden" />
@@ -313,9 +319,8 @@ export function Live({
                     ) : (
                       <div className="rounded-md border-2 border-dashed border-border/60 p-8 text-center">
                         <Upload size={48} className="mx-auto mb-4 opacity-70" />
-                        <p className="text-muted-foreground mb-4">
-                          Upload an image for face recognition
-                        </p>
+                        <p className="text-muted-foreground mb-4">Upload an image for face recognition</p>
+
                         <input
                           ref={fileInputRef}
                           type="file"
@@ -323,9 +328,17 @@ export function Live({
                           onChange={handleFileUpload}
                           className="hidden"
                         />
-                        <Button onClick={() => fileInputRef.current?.click()}>
-                          Choose Image
-                        </Button>
+                        <Button onClick={() => fileInputRef.current?.click()}>Choose Image</Button>
+
+                        <div className="mt-6">
+                          <canvas
+                            ref={uploadCanvasRef}
+                            width={WIDTH}
+                            height={HEIGHT}
+                            className="w-full rounded-md border border-border bg-black/30"
+                            aria-label="Uploaded image preview"
+                          />
+                        </div>
                       </div>
                     )}
                   </CardContent>
@@ -338,13 +351,11 @@ export function Live({
                   </CardHeader>
                   <CardContent>
                     <div className="rounded-md bg-muted p-4 max-h-80 overflow-y-auto">
-                      {presentList.length === 0 ? (
-                        <p className="text-muted-foreground text-center">
-                          No students detected yet
-                        </p>
+                      {safePresentList.length === 0 ? (
+                        <p className="text-muted-foreground text-center">No students detected yet</p>
                       ) : (
                         <div className="space-y-2">
-                          {presentList.map((student) => (
+                          {safePresentList.map((student) => (
                             <div
                               key={student.name}
                               className="flex justify-between items-center bg-card p-3 rounded-md border border-border"
@@ -361,37 +372,36 @@ export function Live({
                   </CardContent>
                 </Card>
               </div>
-
             </CardContent>
           </Card>
         )}
+
         <Card className="bg-slate-900/50 border-slate-800/50 rounded-2xl shadow-xl backdrop-blur-sm mx-8 mt-4">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Current Session Date: {formatDate(currentSessionDet.date)}</CardTitle>
+            <CardTitle className="text-lg">
+              Current Session Date: {currentSessionDet?.date ? formatDate(currentSessionDet.date) : "-"}
+            </CardTitle>
 
             <CardDescription className="text-gray-300">
-              {currentSessionDet && currentSessionDet.course && (
-                <span>Course Name: {currentSessionDet.course.courseName} {currentSessionDet.course.courseCode}</span>
+              {currentSessionDet?.course && (
+                <span>
+                  Course Name: {currentSessionDet.course.courseName} {currentSessionDet.course.courseCode}
+                </span>
               )}
             </CardDescription>
 
             <CardDescription className="text-gray-300">
-              {currentSessionDet && currentSessionDet.course && (
+              {currentSessionDet?.status && (
                 <>
                   <span>Current Status: </span>
                   <span className="font-bold">{stringFormatter(currentSessionDet.status)}</span>
                 </>
-
               )}
             </CardDescription>
 
-            <CardDescription className="text-gray-300">
-
-            </CardDescription>
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-2">
               {statCards.map((stat) => {
                 const Icon = stat.icon;
-
                 return (
                   <div
                     key={stat.label}
@@ -410,8 +420,6 @@ export function Live({
                 );
               })}
             </div>
-
-
           </CardHeader>
 
           <CardContent className="px-6 pb-6">
@@ -441,16 +449,13 @@ export function Live({
                     currentAttendanceRecords.map((record: any) => (
                       <TableRow
                         key={record.attendanceId}
-                        className={cn(
-                          "transition-all duration-200 ease-in-out",
-                          "hover:bg-slate-800/40 hover:shadow-md hover:shadow-slate-900/30"
-                        )}
+                        className={cn("transition-all duration-200 ease-in-out", "hover:bg-slate-800/40 hover:shadow-md hover:shadow-slate-900/30")}
                       >
                         <TableCell className="font-medium text-slate-300 pl-6">{record.studentId}</TableCell>
-                        <TableCell className="font-medium text-slate-300 pl-6">{record.student.name}</TableCell>
+                        <TableCell className="font-medium text-slate-300 pl-6">{record?.student?.name ?? "-"}</TableCell>
 
                         <TableCell className="text-slate-400">
-                          {new Date(record.timestamp).toLocaleString()}
+                          {record?.timestamp ? new Date(record.timestamp).toLocaleString() : "-"}
                         </TableCell>
 
                         <TableCell>
@@ -458,11 +463,11 @@ export function Live({
                             <div
                               className={cn(
                                 "w-2.5 h-2.5 rounded-full",
-                                record.confidenceThreshold >= 90
+                                (record.confidenceThreshold ?? 100) >= 90
                                   ? "bg-emerald-400"
-                                  : record.confidenceThreshold >= 70
-                                    ? "bg-yellow-400"
-                                    : "bg-red-400"
+                                  : (record.confidenceThreshold ?? 100) >= 70
+                                  ? "bg-yellow-400"
+                                  : "bg-red-400"
                               )}
                             />
                             <span className="text-slate-300">
@@ -470,7 +475,6 @@ export function Live({
                             </span>
                           </div>
                         </TableCell>
-
 
                         <TableCell>
                           <Badge
@@ -480,10 +484,10 @@ export function Live({
                               record.method?.toUpperCase() === "AUTOMATIC"
                                 ? "border-blue-500/30 text-blue-400 bg-blue-500/10"
                                 : record.method?.toUpperCase() === "BATCH_AUTO"
-                                  ? "border-amber-500/30 text-amber-400 bg-amber-500/10"
-                                  : record.method?.toUpperCase() === "MANUAL"
-                                    ? "border-purple-500/30 text-purple-400 bg-purple-500/10"
-                                    : "border-slate-500/30 text-slate-400 bg-slate-500/10"
+                                ? "border-amber-500/30 text-amber-400 bg-amber-500/10"
+                                : record.method?.toUpperCase() === "MANUAL"
+                                ? "border-purple-500/30 text-purple-400 bg-purple-500/10"
+                                : "border-slate-500/30 text-slate-400 bg-slate-500/10"
                             )}
                           >
                             {stringFormatter(record.method)}
@@ -520,12 +524,12 @@ export function Live({
                                 record.status === "PRESENT"
                                   ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
                                   : record.status === "LATE"
-                                    ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/30"
-                                    : record.status === "ABSENT"
-                                      ? "bg-red-500/10 text-red-400 border-red-500/30"
-                                      : record.status === "MEDICAL"
-                                        ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
-                                        : "bg-slate-500/10 text-slate-400 border-slate-500/30" // Pending or default
+                                  ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/30"
+                                  : record.status === "ABSENT"
+                                  ? "bg-red-500/10 text-red-400 border-red-500/30"
+                                  : record.status === "MEDICAL"
+                                  ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
+                                  : "bg-slate-500/10 text-slate-400 border-slate-500/30"
                               )}
                             >
                               {stringFormatter(record.status)}
@@ -578,5 +582,5 @@ export function Live({
         </Card>
       </div>
     </div>
-  )
+  );
 }

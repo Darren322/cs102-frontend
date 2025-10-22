@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Camera, Upload, SettingsIcon, Users, Clock, User, Highlighter, File, FileSpreadsheet } from "lucide-react";
 import { Live } from "../components/dashboard";
-import { Session } from "../components/sessions";
-import { Settings } from "../components/settings";
+
 import { Card, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useParams } from "react-router-dom";
@@ -23,6 +22,7 @@ import { toast } from "sonner";
 import { csvExport, pdfExport } from "@/components/api/backend-methods/pdf-csv";
 import { automaticMark } from "@/components/api/backend-methods/AttendanceRecord";
 import ImportAttendanceButton from "@/components/ui/import-csv-button";
+import { scanPhoto } from "@/components/api/backend-methods/Recognition";
 
 // Types for events and attendance records
 type PresentEvent = {
@@ -60,9 +60,20 @@ export default function SmartAttendanceSystem() {
   const lastUrlRef = useRef<string | null>(null);
   const seqRef = useRef(1);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Upload preview canvas (for upload mode)
+  const uploadCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Non-rendering error store
+  const errorRef = useRef<string>("");
+
+  // Dialog state
   const [showBatchDialog, setShowBatchDialog] = useState(false);
   const [batchStatus, setBatchStatus] = useState("ABSENT");
   const [batchRemarks, setBatchRemarks] = useState("");
+  const [confirmationDialog, setConfirmationDialog] = useState(false);
+
+  // Backend session ID for WS/marking
   const [currentSession, setCurrentSession] = useState("");
 
   // UI state
@@ -70,10 +81,9 @@ export default function SmartAttendanceSystem() {
   const [sessionActive, setSessionActive] = useState(false);
   const [recognitionMode, setRecognitionMode] = useState<"live" | "upload" | null>(null);
   const [running, setRunning] = useState(false);
-  const [err, setErr] = useState<string>("");
-  const [currentSessionId, setCurrentSessionId] = useState<string>("");
+  const [currentSessionId, setCurrentSessionId] = useState<string>(""); // client-side session id
 
-  // Manual attendance state
+  // Manual attendance (kept here if you want to bubble into Live later)
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualStudentId, setManualStudentId] = useState("");
   const [manualRemarks, setManualRemarks] = useState("");
@@ -84,38 +94,29 @@ export default function SmartAttendanceSystem() {
   const [presentList, setPresentList] = useState<Array<{ name: string; since: number }>>([]);
 
   // FPS state
-  const [fps, setFps] = useState(0);            // frames sent per second (camera -> backend)
+  const [fps, setFps] = useState(0);
   const frameCountRef = useRef(0);
   const fpsTimerRef = useRef<number | null>(null);
   const id = useParams().id;
-  // (Optional) received FPS if you also want to show server->client stream rate
   const [recvFps, setRecvFps] = useState(0);
   const recvCountRef = useRef(0);
   const recvFpsTimerRef = useRef<number | null>(null);
 
-  // === Camera Picker: ADD STATE + HELPERS (paste with your other useState hooks) ===
+  // Camera picker
   const [showCameraDialog, setShowCameraDialog] = useState(false);
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
   const [cameraLoading, setCameraLoading] = useState(false);
   const [cameraErr, setCameraErr] = useState<string | null>(null);
 
-  // Safely attach a new stream to the <video> without triggering AbortError
-  const setStreamSafely = async (video: HTMLVideoElement, newStream: MediaStream) => {
-    // try to pause any pending play on old stream (ignore errors)
-    try { await video.pause(); } catch { }
-
-    // clear srcObject to cancel previous load/play cleanly
+  // Safely attach a new stream to the <video>
+  const setStreamSafely = useCallback(async (video: HTMLVideoElement, newStream: MediaStream) => {
+    try { await video.pause(); } catch {}
     video.srcObject = null;
-
-    // attach the new stream
     video.srcObject = newStream;
-
-    // ensure autoplay works well on mobile
     (video as any).playsInline = true;
     video.muted = true;
 
-    // wait until we have metadata (dimensions)
     await new Promise<void>((resolve) => {
       const onMeta = () => {
         video.removeEventListener("loadedmetadata", onMeta);
@@ -125,78 +126,51 @@ export default function SmartAttendanceSystem() {
       else video.addEventListener("loadedmetadata", onMeta, { once: true });
     });
 
-    // now play; swallow AbortError (harmless) but surface others
     await video.play().catch((e: any) => {
       if (e?.name !== "AbortError") throw e;
     });
-  };
+  }, []);
 
-
-  // List available cameras (ensures permission so labels/deviceIds are available)
-  const refreshCameras = async () => {
+  // List available cameras
+  const refreshCameras = useCallback(async () => {
     setCameraErr(null);
     setCameraLoading(true);
     try {
-      // Ensure labels/deviceIds are revealed (stops immediately after)
-      const temp = await navigator.mediaDevices
-        .getUserMedia({ video: true, audio: false })
-        .catch(() => null);
-
+      const temp = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }).catch(() => null);
       const devices = await navigator.mediaDevices.enumerateDevices();
       const vids = devices.filter((d) => d.kind === "videoinput");
-
       setCameras(vids);
 
-      // Prefer a concrete deviceId (not "default" / not empty)
-      const preferred =
-        vids.find(v => v.deviceId && v.deviceId !== "default") ?? vids[0] ?? null;
-
-      setSelectedCameraId(
-        preferred && preferred.deviceId && preferred.deviceId !== "default"
-          ? preferred.deviceId
-          : null  // null means: let the browser pick (works when only "default" exists)
-      );
-
+      const preferred = vids.find(v => v.deviceId && v.deviceId !== "default") ?? vids[0] ?? null;
+      setSelectedCameraId(preferred && preferred.deviceId && preferred.deviceId !== "default" ? preferred.deviceId : null);
       if (temp) temp.getTracks().forEach(t => t.stop());
-
-      // Optional: if exactly one camera, auto-close the picker
-      // if (vids.length === 1) setShowCameraDialog(false);
     } catch (e: any) {
       setCameraErr(e?.message ?? "Unable to list cameras.");
     } finally {
       setCameraLoading(false);
     }
-  };
+  }, []);
 
-
-  // Open the modal
-  const openCameraPicker = async () => {
+  const openCameraPicker = useCallback(async () => {
     await refreshCameras();
     setShowCameraDialog(true);
-  };
+  }, [refreshCameras]);
 
-  // Confirm selection (we just close; swapping is handled by an effect below)
-  const confirmCameraSelection = () => {
-    // Even if selectedCameraId is null (only "default"), proceed and let browser pick it
+  const confirmCameraSelection = useCallback(() => {
     setShowCameraDialog(false);
-  };
-
-
+  }, []);
 
   // Config
   const WIDTH = 640;
   const HEIGHT = 480;
   const WS_BASE = "ws://localhost:8081/ws/live-scan";
-  const buildWsUrl = (sessionId: string) =>
-    `${WS_BASE}?sessionId=${encodeURIComponent(sessionId)}`;
+  const buildWsUrl = (sessionId: string) => `${WS_BASE}?sessionId=${encodeURIComponent(sessionId)}`;
   const detectionsRef = useRef<any[]>([]);
 
-  // Generate session ID
-  const generateSessionId = () => {
-    return `SESSION_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  };
+  // Generate client-side session ID
+  const generateSessionId = () => `SESSION_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-  // Start new session
+  // Start/stop sessions
   const startSession = (mode: "live" | "upload") => {
     const sessionId = generateSessionId();
     setCurrentSessionId(sessionId);
@@ -208,37 +182,29 @@ export default function SmartAttendanceSystem() {
     }
   };
 
-
-  // Stop session
   const stopSession = () => {
     setSessionActive(false);
     setRunning(false);
     setRecognitionMode(null);
     setCurrentSessionId("");
     setPresentList([]);
-    setSelectedCameraId(null); // 👈 reset so the picker auto-opens next time
+    setSelectedCameraId(null);
+
+    // clear the upload preview canvas when ending session
+    const c = uploadCanvasRef.current;
+    if (c) {
+      const ctx = c.getContext("2d");
+      ctx?.clearRect(0, 0, c.width, c.height);
+    }
   };
 
-  // Add attendance record (with duplicate prevention)
-  const addAttendanceRecord = (
+  // Add attendance record — duplicate prevention INSIDE updater
+  const addAttendanceRecord = useCallback((
     studentId: string,
     confidence: number = 1.0,
     markingType: "automatic" | "manual" = "automatic",
     remarks: string = ""
   ) => {
-    // Check if the student is already marked as present in the current session
-    const existingRecord = attendanceRecords.find(
-      (record) =>
-        record.studentId === studentId &&
-        record.sessionId === currentSessionId &&
-        record.status === "present"
-    );
-
-    if (existingRecord) {
-      console.log(`Student ${studentId} is already marked present in this session. Skipping.`);
-      return false;
-    }
-
     const newRecord: AttendanceRecord = {
       id: `REC_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
       sessionId: currentSessionId,
@@ -250,80 +216,149 @@ export default function SmartAttendanceSystem() {
       remarks,
     };
 
-    setAttendanceRecords((prev) => {
-      const dupIdx = prev.findIndex(
-        (record) =>
-          record.studentId === studentId &&
-          record.sessionId === currentSessionId &&
-          record.status === "present"
+    let added = false;
+    setAttendanceRecords(prev => {
+      const dup = prev.find(
+        r => r.studentId === studentId && r.sessionId === currentSessionId && r.status === "present"
       );
-      if (dupIdx !== -1) return prev;
+      if (dup) return prev;
+      added = true;
       return [newRecord, ...prev];
     });
 
-    console.log(`Attendance marked for student ${studentId} in session ${currentSessionId}`);
-    return true;
+    if (added) {
+      console.log(`Attendance marked for student ${studentId} in session ${currentSessionId}`);
+    } else {
+      console.log(`Student ${studentId} already present in this session, skipping.`);
+    }
+    return added;
+  }, [currentSessionId]);
+
+  // ---------- helpers for the upload canvas ----------
+  const drawImageToCanvas = (canvas: HTMLCanvasElement, img: ImageBitmap | HTMLImageElement) => {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const cw = canvas.width, ch = canvas.height;
+    ctx.clearRect(0, 0, cw, ch);
+
+    const iw = (img as any).width, ih = (img as any).height;
+    if (!iw || !ih) return;
+
+    const scale = Math.min(cw / iw, ch / ih);
+    const dw = iw * scale;
+    const dh = ih * scale;
+    const dx = (cw - dw) / 2;
+    const dy = (ch - dh) / 2;
+
+    ctx.drawImage(img as any, dx, dy, dw, dh);
   };
 
-  getCurrentSession(id).then((response) => {
-    setCurrentSession(response.data.sessionID);
-
-  }).catch((err) => {
-    console.error("cant get session data? possibly wrong id")
-  })
-
-  // Manual attendance entry (with duplicate check)
-  const handleManualEntry = () => {
-    if (manualStudentId.trim()) {
-      const wasAdded = addAttendanceRecord(manualStudentId, 1.0, "manual", manualRemarks);
-      if (wasAdded) {
-        setManualStudentId("");
-        setManualRemarks("");
-        setShowManualEntry(false);
-      } else {
-        setErr(`Student ${manualStudentId} is already marked present in this session`);
-        setTimeout(() => setErr(""), 3000);
-      }
+  const drawBlobToCanvas = async (canvas: HTMLCanvasElement, blob: Blob) => {
+    const bmp = await createImageBitmap(blob);
+    try {
+      drawImageToCanvas(canvas, bmp);
+    } finally {
+      (bmp as any).close?.();
     }
   };
 
-  // Handle file upload (with duplicate prevention)
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const drawBase64ToCanvas = async (canvas: HTMLCanvasElement, base64: string) => {
+    if (!base64 || !canvas) return;
+    const dataUrl = base64.startsWith("data:")
+      ? base64
+      : `data:image/jpeg;base64,${base64}`;
+
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    await drawBlobToCanvas(canvas, blob);
+  };
+  // ---------------------------------------------------
+
+  // Upload photo -> draw → scan → (optionally draw annotated) → mark
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && file.type.startsWith("image/")) {
-      // Simulate processing uploaded image
-      setTimeout(() => {
-        const mockStudents = ["STUDENT_001", "STUDENT_002", "STUDENT_003"];
-        const newlyAdded: string[] = [];
+    const canvas = uploadCanvasRef.current;
 
-        mockStudents.forEach((id) => {
-          const wasAdded = addAttendanceRecord(
-            id,
-            85 + Math.random() * 10,
-            "automatic",
-            "Detected from uploaded image"
-          );
-          if (wasAdded) newlyAdded.push(id);
-        });
-
-        if (newlyAdded.length > 0) {
-          console.log(`Added ${newlyAdded.length} new attendance records from uploaded image`);
-        }
-      }, 1000);
+    if (!file || !file.type.startsWith("image/")) {
+      if (canvas) {
+        const ctx = canvas.getContext("2d");
+        ctx?.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
     }
-    if (fileInputRef.current) fileInputRef.current.value = "";
+
+    try {
+      // Draw the **raw uploaded image** immediately
+      if (canvas) {
+        canvas.width = WIDTH;
+        canvas.height = HEIGHT;
+        await drawBlobToCanvas(canvas, file);
+      }
+
+      // Send to backend (normalized to { dets, imageJpegBase64 })
+      const result = await scanPhoto({ file, sessionId: currentSession });
+      const dets = (result as any).dets ?? result ?? [];
+      const imageJpegBase64: string | undefined = (result as any).imageJpegBase64;
+
+      // If backend returns annotated image, draw that instead (REPLACE)
+      if (canvas && imageJpegBase64 && imageJpegBase64.length > 0) {
+        await drawBase64ToCanvas(canvas, imageJpegBase64);
+      }
+
+      // ---- Filter out "Unknown"/blank BEFORE marking ----
+      const cleaned = (dets as any[])
+        .map((d) => ({
+          name: (d?.studentId ?? d?.name ?? "").toString().trim(),
+          confidence: Number.isFinite(d?.confidence) ? d.confidence : 80,
+        }))
+        .filter((d) => d.name && d.name.toLowerCase() !== "unknown");
+
+      // Unique by name
+      const uniqueByName = Object.values(
+        cleaned.reduce((acc: Record<string, { name: string; confidence: number }>, d) => {
+          acc[d.name] = d;
+          return acc;
+        }, {})
+      ) as Array<{ name: string; confidence: number }>;
+
+      const now = Date.now();
+      const newlyAdded: string[] = [];
+
+      uniqueByName.forEach(({ name, confidence }) => {
+        const wasAdded = addAttendanceRecord(
+          name,
+          confidence,
+          "automatic",
+          "Detected from uploaded image"
+        );
+        if (wasAdded) newlyAdded.push(name);
+      });
+
+      if (newlyAdded.length > 0) {
+        setPresentList((prev) => {
+          const set = new Set(prev.map((p) => p.name));
+          const next = prev.slice();
+          for (const n of newlyAdded) if (!set.has(n)) next.push({ name: n, since: now });
+          return next;
+        });
+        console.log(`✅ Added ${newlyAdded.length} new attendance records from uploaded image`);
+      }
+    } catch (e: any) {
+      console.error("❌ Photo scan failed:", e);
+      errorRef.current = String(e);
+      toast.error(errorRef.current);
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
-  // Update record
+  // Update a single record field
   const updateRecord = (id: string, field: keyof AttendanceRecord, value: any) => {
     setAttendanceRecords((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
   };
 
-
-
-
-  // Camera setup
-  // Camera setup
+  // Camera setup (initial getUserMedia)
   useEffect(() => {
     if (recognitionMode !== "live") return;
 
@@ -334,11 +369,10 @@ export default function SmartAttendanceSystem() {
           audio: false,
         });
         const video = videoRef.current;
-        if (video) {
-          await setStreamSafely(video, stream); // 👈 use the safe setter
-        }
+        if (video) await setStreamSafely(video, stream);
       } catch (e: any) {
-        setErr(String(e));
+        errorRef.current = String(e);
+        toast.error(errorRef.current);
       }
     })();
 
@@ -346,54 +380,40 @@ export default function SmartAttendanceSystem() {
       const tracks = (videoRef.current?.srcObject as MediaStream | null)?.getTracks() ?? [];
       tracks.forEach((t) => t.stop());
     };
-  }, [recognitionMode]);
+  }, [recognitionMode, setStreamSafely]);
 
-
-
-
-  // === Camera Picker: AUTO-OPEN ON LIVE (ADD) ===
+  // Auto-open camera picker on live
   useEffect(() => {
     if (recognitionMode === "live" && sessionActive) {
       if (!selectedCameraId) openCameraPicker();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recognitionMode, sessionActive]);
+  }, [recognitionMode, sessionActive, selectedCameraId, openCameraPicker]);
 
-
-  // === Camera Picker: SWAP STREAM WHEN CAMERA CHANGES (ADD) ===
+  // Swap stream when selected camera changes
   useEffect(() => {
     const swapToSelectedCamera = async () => {
       if (recognitionMode !== "live" || !running || !selectedCameraId) return;
-
       try {
         const constraints: MediaStreamConstraints = {
           video: { width: WIDTH, height: HEIGHT, deviceId: { exact: selectedCameraId } },
           audio: false,
         };
         const newStream = await navigator.mediaDevices.getUserMedia(constraints);
-
-        // Stop old tracks
         const old = (videoRef.current?.srcObject as MediaStream | null) ?? null;
         if (old) old.getTracks().forEach((t) => t.stop());
-
-        // ✅ Use the safe helper instead of direct play()
         const video = videoRef.current;
-        if (video) {
-          await setStreamSafely(video, newStream);
-        }
+        if (video) await setStreamSafely(video, newStream);
       } catch (e: any) {
-        setErr(String(e?.message || e));
+        errorRef.current = String(e?.message || e);
+        toast.error(errorRef.current);
       }
     };
-
     swapToSelectedCamera();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCameraId]);
+  }, [selectedCameraId, recognitionMode, running, setStreamSafely]);
 
-
-  // === Camera Picker: KEEP LIST FRESH ON DEVICE CHANGES (ADD) ===
+  // Keep camera list fresh on device changes
   useEffect(() => {
-    const handler = () => { refreshCameras().catch(() => { }); };
+    const handler = () => { refreshCameras().catch(() => {}); };
     if (navigator.mediaDevices?.addEventListener) {
       navigator.mediaDevices.addEventListener("devicechange", handler);
     } else {
@@ -406,28 +426,24 @@ export default function SmartAttendanceSystem() {
         (navigator.mediaDevices as any).ondevicechange = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [refreshCameras]);
 
-
-  // ✅ Outside and at top level — after your WebSocket setup
+  // Periodic flush → backend auto mark
   useEffect(() => {
     const interval = setInterval(async () => {
       if (detectionsRef.current.length > 0) {
-        // Deduplicate detections
         const unique = Object.values(
           detectionsRef.current.reduce((acc, det) => {
-            acc[det.name] = det;
+            const nm = (det?.name ?? "").toString().trim();
+            if (!nm || nm.toLowerCase() === "unknown") return acc;
+            acc[nm] = det;
             return acc;
           }, {} as Record<string, any>)
         );
 
-        console.log("🕔 Flushing unique detections:", unique);
-
-        // Build payload for backend
-        const payload = unique
-          .filter((d: any) => d?.name && d?.confidence >= 80) // optional threshold
-          .map((d: any) => ({
+        const payload = (unique as any[])
+          .filter((d) => d?.name && d?.name.toLowerCase() !== "unknown" && d?.confidence >= 80)
+          .map((d) => ({
             studentId: d.name,
             confidence: d.confidence,
             timestamp: new Date().toISOString(),
@@ -435,21 +451,25 @@ export default function SmartAttendanceSystem() {
           }));
 
         try {
-          const res = await automaticMark(currentSession, payload);
-          console.log("✅ Auto-marked successfully:", res);
-          toast.success(`Auto-marked ${payload.length} student(s)`);
-        } catch (err) {
-          console.error("❌ Auto-marking failed:", err);
+          if (payload.length) {
+            const res = await automaticMark(currentSession, payload);
+            console.log("✅ Auto-marked successfully:", res);
+            toast.success(`Auto-marked ${payload.length} student(s)`);
+          }
+        } catch (e) {
+          console.error("❌ Auto-marking failed:", e);
+          errorRef.current = String(e);
+          toast.error(errorRef.current);
         }
 
-        // Clear buffer
         detectionsRef.current = [];
       }
     }, 5000);
 
     return () => clearInterval(interval);
   }, [currentSession]);
-  // WebSocket connection
+
+  // WebSocket connection — independent of attendanceRecords
   useEffect(() => {
     if (!running || recognitionMode !== "live") {
       wsRef.current?.close();
@@ -459,11 +479,15 @@ export default function SmartAttendanceSystem() {
     const ws = new WebSocket(buildWsUrl(currentSession));
     ws.binaryType = "blob";
     wsRef.current = ws;
+
     ws.onopen = () => {
       ws.send(JSON.stringify({ type: "hello", sessionId: id, mode: recognitionMode }));
     };
-    ws.onerror = () => setErr("WebSocket error");
-    ws.onclose = () => { };
+    ws.onerror = () => {
+      errorRef.current = "WebSocket error";
+      toast.error(errorRef.current);
+    };
+    ws.onclose = () => {};
 
     // Start recv FPS ticker on connect
     recvFpsTimerRef.current = window.setInterval(() => {
@@ -473,8 +497,7 @@ export default function SmartAttendanceSystem() {
 
     ws.onmessage = (ev) => {
       if (typeof ev.data !== "string") {
-        console.log(ev.data)
-        recvCountRef.current += 1; // count received frames
+        recvCountRef.current += 1;
         const url = URL.createObjectURL(ev.data as Blob);
         const imgEl = serverImgRef.current;
         if (imgEl) {
@@ -486,25 +509,18 @@ export default function SmartAttendanceSystem() {
       }
       try {
         const msg = JSON.parse(ev.data) as PresentEvent | DetsMsg | any;
-        //this is what we will send to backend.
-        console.log(msg);
+
         if (msg.type === "dets" && Array.isArray(msg.dets)) {
           detectionsRef.current.push(...msg.dets);
         }
-        // Handle attendance events
+
         if (msg.type === "present" || msg.type === "left") {
-          const name = (msg as PresentEvent).name || (msg as any).studentId || "Unknown";
+          const raw = (msg as PresentEvent).name || (msg as any).studentId || "";
+          const name = raw ? raw.toString().trim() : "";
           const confidence = (msg as PresentEvent).conf || 80;
 
-          const existingRecord = attendanceRecords.find(
-            (record) =>
-              record.studentId === (msg as PresentEvent).studentId &&
-              record.sessionId === currentSessionId &&
-              record.status === "present"
-          );
-
-          if (existingRecord) {
-            console.log(`Skipping duplicate record for student ${name} in session ${currentSessionId}`);
+          // Skip unknown/blank names
+          if (!name || name.toLowerCase() === "unknown") {
             return;
           }
 
@@ -522,22 +538,21 @@ export default function SmartAttendanceSystem() {
               });
             }
           } else {
-            setPresentList((prev) => prev.filter((p) => p.name !== name));
+            setPresentList((prev) => prev.filter((p) => p.name !== name && !!p));
           }
           return;
         }
 
-        // Handle detection events
         if (msg.type === "dets" && Array.isArray(msg.dets)) {
           const names = (msg as DetsMsg).dets
-            .map((d) => d.name)
-            .filter((n): n is string => !!n && n !== "Unknown");
+            .map((d) => (d?.name ?? "").toString().trim())
+            .filter((n): n is string => !!n && n.toLowerCase() !== "unknown");
           if (names.length) {
             const now = Date.now();
             const newlyAddedNames: string[] = [];
 
             names.forEach((name) => {
-              const detection = (msg as DetsMsg).dets.find((d) => d.name === name);
+              const detection = (msg as DetsMsg).dets.find((d) => (d?.name ?? "").toString().trim() === name);
               const confidence = detection?.confidence || 80;
               const wasAdded = addAttendanceRecord(
                 name,
@@ -553,7 +568,7 @@ export default function SmartAttendanceSystem() {
                 const set = new Set(prev.map((p) => p.name));
                 let next = prev.slice();
                 for (const n of newlyAddedNames) {
-                  if (!set.has(n)) next.push({ name: n, since: now });
+                  if (n && !set.has(n)) next.push({ name: n, since: now });
                 }
                 return next;
               });
@@ -561,6 +576,7 @@ export default function SmartAttendanceSystem() {
           }
         }
       } catch {
+        // ignore parse errors
       }
     };
 
@@ -578,8 +594,9 @@ export default function SmartAttendanceSystem() {
       }
       setRecvFps(0);
     };
-  }, [running, recognitionMode, currentSessionId, attendanceRecords]);
+  }, [running, recognitionMode, currentSession, id, addAttendanceRecord]);
 
+  // Send frames loop
   useEffect(() => {
     if (!running || recognitionMode !== "live") return;
     let timer = 0 as unknown as number;
@@ -632,7 +649,8 @@ export default function SmartAttendanceSystem() {
             ws.send(blob);
             frameCountRef.current += 1;
           } catch {
-            setErr("Send failed");
+            errorRef.current = "Send failed";
+            toast.error(errorRef.current);
           } finally {
             timer = window.setTimeout(tick, 5);
           }
@@ -652,7 +670,6 @@ export default function SmartAttendanceSystem() {
       setFps(0);
     };
   }, [running, recognitionMode]);
-  console.log(activeTab)
 
   const sidebarItems = [
     { id: "dashboard", label: "Dashboard", icon: Users, text: "Managed your Dashboard here." },
@@ -661,125 +678,105 @@ export default function SmartAttendanceSystem() {
     { id: "settings", label: "Settings", icon: SettingsIcon, text: "Modify Settings" },
   ];
   const curText = sidebarItems.find((tab) => tab.id === activeTab);
-  console.log(activeTab)
 
+  const [isCurrentClosed, setIsCurrentClosed] = useState(false);
+  const [isCurrentActive, setIsCurrentActive] = useState(false);
 
-  console.log(id)
-  const [isCurrentClosed, setIsCurrentClosed] = useState(false)
-  const [isCurrentActive, setIsCurrentActive] = useState(false)
-
+  // Fetch current session ONLY in effect
   useEffect(() => {
-    getCurrentSession(id).then((response) => {
-      setCurrentSession(response.data.sessionID);
-      console.log(response.data.active)
-      console.log(response.data.closed)
-      setIsCurrentActive(response.data.active)
-      setIsCurrentClosed(response.data.closed)
-    }).catch((err) => {
-      console.error(err)
-    })
-  }, [id])
+    if (!id) return;
+    getCurrentSession(id)
+      .then((response) => {
+        setCurrentSession(response.data.sessionID);
+        setIsCurrentActive(response.data.active);
+        setIsCurrentClosed(response.data.closed);
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+  }, [id]);
 
-  const [isSubmitted, setIsSubmitted] = useState(false)
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
   const handleSubmission = () => {
-    console.log('hi')
-    let payload = {
-      "status": batchStatus,
-      "optionalNotes": `${batchRemarks}`,
-      "recordedBy": localStorage['username']
-    }
-    batchMark(payload, id).then((response) => {
-      console.log(response)
-      setShowBatchDialog(false)
-      setIsSubmitted(true)
-      toast.success('Successfully updated!')
-    }).catch((err) => {
-      console.error(err)
-    })
-  }
-  console.log(isCurrentClosed)
+    const payload = {
+      status: batchStatus,
+      optionalNotes: batchRemarks,
+      recordedBy: localStorage["username"],
+    };
+    batchMark(payload, id)
+      .then(() => {
+        setShowBatchDialog(false);
+        setIsSubmitted(true);
+        toast.success("Successfully updated!");
+      })
+      .catch((err) => {
+        console.error(err);
+        toast.error("Failed to update.");
+      });
+  };
 
   const handleActive = () => {
     if (!id) return;
-
     activateCourse(id)
-      .then((response) => {
+      .then(() => {
         toast.success("Successfully set to Active");
-        setIsCurrentActive(true); // ✅ instantly reflect state change
+        setIsCurrentActive(true);
       })
       .catch(() => {
         toast.error("Unable to set active.");
       });
   };
+
   const navigate = useNavigate();
 
   const closeSession = () => {
     if (!id) return;
-    closeCourse(id).then((response) => {
-      toast.success("Successfully set to Closed");
-      getCurrentSession(id).then((response) => {
-        setCurrentSession(response.data.sessionID);
-        console.log(response.data.active)
-        console.log(response.data.closed)
-        setIsCurrentActive(response.data.active)
-        setIsCurrentClosed(response.data.closed)
-      }).catch((err) => {
-        console.error(err)
+    closeCourse(id)
+      .then(() => {
+        toast.success("Successfully set to Closed");
+        getCurrentSession(id)
+          .then((response) => {
+            setCurrentSession(response.data.sessionID);
+            setIsCurrentActive(response.data.active);
+            setIsCurrentClosed(response.data.closed);
+          })
+          .catch((err) => {
+            console.error(err);
+          });
+        navigate(`/session_start/${id}`);
       })
-      navigate(`/session_start/${id}`);
-    }).catch((error) => {
-      toast.error("Unable to set to close.")
-    })
-  }
-  //Able to get unique detections alr. DONT MODIFY HERE
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (detectionsRef.current.length > 0) {
-        // ✅ Deduplicate by name (only keep one detection per person)
-        const unique = Object.values(
-          detectionsRef.current.reduce((acc, det) => {
-            acc[det.name] = det; // overwrite older ones by name
-            return acc;
-          }, {} as Record<string, any>)
-        );
-
-        console.log("🕔 Flushing unique detections:", unique);
-
-        // clear buffer after flush
-        detectionsRef.current = [];
-      } else {
-        console.log("🕔 No new detections yet...");
-      }
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, []);
-
+      .catch(() => {
+        toast.error("Unable to set to close.");
+      });
+  };
 
   const exportPDF = () => {
-    pdfExport(id).then((response) => {
-      console.log(response)
-      setConfirmationDialog(false)
-      toast.success('Sent PDF Successfully and emailed.')
-    }).catch((error) => {
-      console.error(error)
-      setConfirmationDialog(false)
-      toast.error('PDF did not manage to send and emailed.')
-    })
-  }
+    pdfExport(id)
+      .then(() => {
+        setConfirmationDialog(false);
+        toast.success("Sent PDF Successfully and emailed.");
+      })
+      .catch((error) => {
+        console.error(error);
+        setConfirmationDialog(false);
+        toast.error("PDF did not manage to send and emailed.");
+      });
+  };
 
   const exportCSV = () => {
-    csvExport(id).then((response) => {
-      console.log(response)
-      setConfirmationDialog(false)
-      toast.success('Sent CSV Successfully and emailed.')
-    }).catch((error) => {
-      console.error(error)
-      setConfirmationDialog(false)
-      toast.error('CSV did not manage to send and emailed.')
-    })
-  }
-  const [confirmationDialog, setConfirmationDialog] = useState(false)
+    csvExport(id)
+      .then(() => {
+        setConfirmationDialog(false);
+        toast.success("Sent CSV Successfully and emailed.");
+      })
+      .catch((error) => {
+        console.error(error);
+        setConfirmationDialog(false);
+        toast.error("CSV did not manage to send and emailed.");
+      });
+  };
+
   return (
     <div className="flex bg-slate-950 text-white overflow-x-hidden">
       <div className="flex-1 min-w-0">
@@ -795,129 +792,103 @@ export default function SmartAttendanceSystem() {
                 <p className="text-gray-300 mt-1">{curText?.text}</p>
               </div>
 
-              {
-                isCurrentClosed ? (
-                  // Case 1: closed
-                  <div className="grid grid-cols-1 gap-3">
-                    <ImportAttendanceButton sessionId={id ?? ""} />
-                    <Button
-                      onClick={() => setConfirmationDialog(true)}
-                      className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/30 
-          font-medium rounded-lg px-4 py-2 backdrop-blur-sm shadow-sm transition-all"
-                    >
-                      <Upload size={18} className="mr-2" />
-                      Export
-                    </Button>
-                  </div>
-                ) : !isCurrentActive ? (
-                  // Case 2: not closed & not active
-                  <div className="grid grid-cols-1 gap-3">
-                    <Button
-                      onClick={() => handleActive()}
-                      className="bg-violet-500/20 hover:bg-violet-500/30 text-violet-300 border border-violet-400/40 
-          font-semibold rounded-2xl px-4 py-5 transition-all"
-                    >
-                      <SettingsIcon size={18} className="mr-2" />
-                      Set to Active
-                    </Button>
-                  </div>
-                ) : (
-                  // Case 3: active & not closed
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button
-                      onClick={() => startSession("live")}
-                      className="bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 transition-all rounded-2xl px-4 py-5"
-                    >
-                      <Camera size={18} className="mr-2" />
-                      Live Recognition
-                    </Button>
-                    <Button
-                      onClick={() => startSession("upload")}
-                      className="bg-green-500/10 hover:bg-green-500/20 border-green-500/30 text-green-300 transition-all rounded-2xl px-4 py-5"
-                    >
-                      <Upload size={18} className="mr-2" />
-                      Upload Image
-                    </Button>
-                    <Button
-                      onClick={() => setShowBatchDialog(true)}
-                      className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-semibold px-4 py-5 border border-amber-400/40 backdrop-blur-sm 
-          shadow-sm transition-all rounded-2xl"
-                    >
-                      <Highlighter size={18} className="mr-2" />
-                      Batch Mark
-                    </Button>
+              {isCurrentClosed ? (
+                <div className="grid grid-cols-1 gap-3">
+                  <ImportAttendanceButton sessionId={id ?? ""} />
+                  <Button
+                    onClick={() => setConfirmationDialog(true)}
+                    className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/30 
+                    font-medium rounded-lg px-4 py-2 backdrop-blur-sm shadow-sm transition-all"
+                  >
+                    <Upload size={18} className="mr-2" />
+                    Export
+                  </Button>
+                </div>
+              ) : !isCurrentActive ? (
+                <div className="grid grid-cols-1 gap-3">
+                  <Button
+                    onClick={handleActive}
+                    className="bg-violet-500/20 hover:bg-violet-500/30 text-violet-300 border border-violet-400/40 
+                    font-semibold rounded-2xl px-4 py-5 transition-all"
+                  >
+                    <SettingsIcon size={18} className="mr-2" />
+                    Set to Active
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    onClick={() => startSession("live")}
+                    className="bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 transition-all rounded-2xl px-4 py-5"
+                  >
+                    <Camera size={18} className="mr-2" />
+                    Live Recognition
+                  </Button>
+                  <Button
+                    onClick={() => startSession("upload")}
+                    className="bg-green-500/10 hover:bg-green-500/20 border-green-500/30 text-green-300 transition-all rounded-2xl px-4 py-5"
+                  >
+                    <Upload size={18} className="mr-2" />
+                    Upload Image
+                  </Button>
+                  <Button
+                    onClick={() => setShowBatchDialog(true)}
+                    className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-semibold px-4 py-5 border border-amber-400/40 backdrop-blur-sm 
+                    shadow-sm transition-all rounded-2xl"
+                  >
+                    <Highlighter size={18} className="mr-2" />
+                    Batch Mark
+                  </Button>
 
-                    <Button
-                      onClick={() => closeSession()}
-                      className="bg-red-500/20 hover:bg-red-500/30 text-red-300 font-semibold px-4 py-5 border border-red-400/40 backdrop-blur-sm 
-          shadow-sm transition-all rounded-2xl"
-                    >
-                      <Highlighter size={18} className="mr-2" />
-                      Close Session
-                    </Button>
-                  </div>
-                )
-              }
-
+                  <Button
+                    onClick={closeSession}
+                    className="bg-red-500/20 hover:bg-red-500/30 text-red-300 font-semibold px-4 py-5 border border-red-400/40 backdrop-blur-sm 
+                    shadow-sm transition-all rounded-2xl"
+                  >
+                    <Highlighter size={18} className="mr-2" />
+                    Close Session
+                  </Button>
+                </div>
+              )}
             </CardHeader>
           </Card>
+
           <div className="">
-            {activeTab === "dashboard" && (
-              <Live
-                sessionActive={sessionActive}
-                currentSessionId={currentSessionId}
-                recognitionMode={recognitionMode}
-                running={running}
-                isSubmitted={isSubmitted}
-                err={err}
-                presentList={presentList}
-                attendanceRecords={attendanceRecords}
-                editingRecord={editingRecord}
-                showManualEntry={showManualEntry}
-                manualStudentId={manualStudentId}
-                manualRemarks={manualRemarks}
-                videoRef={videoRef}
-                serverImgRef={serverImgRef}
-                captureRef={captureRef}
-                fileInputRef={fileInputRef}
-                WIDTH={WIDTH}
-                HEIGHT={HEIGHT}
-                setRunning={setRunning}
-                setShowManualEntry={setShowManualEntry}
-                stopSession={stopSession}
-                handleFileUpload={handleFileUpload}
-                handleManualEntry={handleManualEntry}
-                updateRecord={updateRecord}
-                setEditingRecord={setEditingRecord}
-                fps={fps}
-                recvFps={recvFps}
-                setActiveTab={setActiveTab}
-              />
-            )}
-
-            {activeTab === "sessions" && (
-              <Session
-                attendanceRecords={attendanceRecords}
-                editingRecord={editingRecord}
-                updateRecord={updateRecord}
-                setEditingRecord={setEditingRecord}
-              />
-            )}
-
-
-            {activeTab === "settings" && (
-              <Settings
-                attendanceRecords={attendanceRecords}
-                editingRecord={editingRecord}
-                updateRecord={updateRecord}
-                setEditingRecord={setEditingRecord}
-              />
-            )}
+            <Live
+              sessionActive={sessionActive}
+              currentSessionId={currentSessionId}
+              recognitionMode={recognitionMode}
+              running={running}
+              isSubmitted={isSubmitted}
+              presentList={presentList}
+              attendanceRecords={attendanceRecords}
+              editingRecord={editingRecord}
+              showManualEntry={showManualEntry}
+              manualStudentId={manualStudentId}
+              manualRemarks={manualRemarks}
+              videoRef={videoRef}
+              serverImgRef={serverImgRef}
+              captureRef={captureRef}
+              fileInputRef={fileInputRef}
+              uploadCanvasRef={uploadCanvasRef}
+              WIDTH={WIDTH}
+              HEIGHT={HEIGHT}
+              setRunning={setRunning}
+              setShowManualEntry={setShowManualEntry}
+              stopSession={stopSession}
+              handleFileUpload={handleFileUpload}
+              handleManualEntry={() => {}}
+              updateRecord={updateRecord}
+              setEditingRecord={setEditingRecord}
+              fps={fps}
+              recvFps={recvFps}
+              setActiveTab={setActiveTab}
+            />
           </div>
         </div>
-
-
       </div>
+
+      {/* Batch Mark Dialog */}
       <Dialog open={showBatchDialog} onOpenChange={setShowBatchDialog}>
         <DialogContent className="bg-slate-900 border border-slate-700 text-white rounded-xl shadow-xl">
           <DialogHeader>
@@ -925,8 +896,6 @@ export default function SmartAttendanceSystem() {
               Batch Mark Pending Students
             </DialogTitle>
           </DialogHeader>
-
-
 
           <div className="space-y-4 py-2">
             <div className="flex flex-col space-y-2">
@@ -965,7 +934,6 @@ export default function SmartAttendanceSystem() {
             </Button>
 
             <Button
-
               onClick={handleSubmission}
               className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/40"
             >
@@ -975,8 +943,9 @@ export default function SmartAttendanceSystem() {
         </DialogContent>
       </Dialog>
 
+      {/* Camera Picker */}
       <Dialog open={showCameraDialog} onOpenChange={setShowCameraDialog}>
-        <DialogContent className="bg-slate-900 border border-slate-700 text-white rounded-2xl shadow-xl">
+        <DialogContent className="bg-slate-900 border-slate-700 text-white rounded-2xl shadow-xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold text-blue-300">
               Choose a camera
@@ -986,7 +955,7 @@ export default function SmartAttendanceSystem() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2">
             {cameraErr && <div className="text-red-400 text-sm">{cameraErr}</div>}
 
             <div className="flex items-center gap-2">
@@ -1042,11 +1011,9 @@ export default function SmartAttendanceSystem() {
         </DialogContent>
       </Dialog>
 
-
-
-
+      {/* Export Dialog */}
       <Dialog open={confirmationDialog} onOpenChange={setConfirmationDialog}>
-        <DialogContent className="bg-slate-900 border border-slate-700 text-white rounded-2xl shadow-xl">
+        <DialogContent className="bg-slate-900 border-slate-700 text-white rounded-2xl shadow-xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-medium text-slate-300">
               Choose your method of exporting.
@@ -1056,9 +1023,8 @@ export default function SmartAttendanceSystem() {
           <div className="flex space-x-4">
             <div className="w-[50%]">
               <Button
-                className="bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-400/40 
-               rounded-2xl px-4 py-5 backdrop-blur-sm shadow-sm transition-all flex items-center justify-center gap-2 w-full"
-                onClick={() => { exportPDF() }}
+                className="bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-400/40 rounded-2xl px-4 py-5 backdrop-blur-sm shadow-sm transition-all flex items-center justify-center gap-2 w-full"
+                onClick={exportPDF}
               >
                 <File className="w-4 h-4" />
                 PDF
@@ -1066,9 +1032,8 @@ export default function SmartAttendanceSystem() {
             </div>
             <div className="w-[50%]">
               <Button
-                className="w-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 
-               rounded-2xl px-4 py-5 backdrop-blur-sm shadow-sm transition-all flex items-center justify-center gap-2"
-                onClick={() => { exportCSV() }}
+                className="w-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 rounded-2xl px-4 py-5 backdrop-blur-sm shadow-sm transition-all flex items-center justify-center gap-2"
+                onClick={exportCSV}
               >
                 <FileSpreadsheet className="w-4 h-4" />
                 CSV
