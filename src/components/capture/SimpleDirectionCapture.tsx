@@ -13,18 +13,15 @@ type Step = Direction;
 
 const DEFAULT_STEPS: Step[] = [
   "STRAIGHT",
-  "STRAIGHT",
-  "STRAIGHT",
   "UP-LEFT",
   "UP",
   "UP-RIGHT",
-  "RIGHT",
   "RIGHT",
   "DOWN-RIGHT",
   "DOWN",
   "DOWN-LEFT",
   "LEFT",
-  "LEFT"
+   "STRAIGHT",
 ];
 
 type Shot = { file: File; previewUrl: string; dir: Direction; ts: number };

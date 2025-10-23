@@ -1,6 +1,9 @@
-export function stringFormatter(string: string) {
-    return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
+export function stringFormatter(input?: string | null): string {
+  if (!input) return "";
+  const s = String(input);
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 }
+
 export function formatTime(currentDate: string) {
     const date = new Date(`1970-01-01T${currentDate}`);
     return date.toLocaleTimeString("en-SG", {
