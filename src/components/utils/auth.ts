@@ -42,6 +42,16 @@ export function resolveJwtUsername(p: JwtPayload | null): string {
   return (p.sub || p.email || p.username || "user@example.com").toString();
 }
 
+export function getRole(): string | null {
+  const p = getUser();
+  const fromJwt =
+    (p?.role ??
+      // if backend sometimes sends an array
+      (Array.isArray((p as any)?.roles) ? (p as any).roles[0] : undefined)) as string | undefined;
+
+  return fromJwt ?? sessionStorage.getItem("role") ?? localStorage.getItem("role");
+}
+
 export function logout() {
   sessionStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(TOKEN_KEY);

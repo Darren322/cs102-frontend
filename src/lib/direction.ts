@@ -18,8 +18,6 @@ const PITCH_DOWN_THRESHOLD = 130;
 const YAW_RIGHT_THRESHOLD = 75;
 const YAW_LEFT_THRESHOLD = 95;
 
-const FLIP_YAW = false;
-
 
 export let YAW_CENTER = 90;
 export let PITCH_CENTER = 90;

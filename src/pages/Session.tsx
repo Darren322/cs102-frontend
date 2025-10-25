@@ -4,13 +4,6 @@ import { useState, useEffect } from "react"
 import {
   Plus,
   Search,
-  Filter,
-  LayoutDashboard,
-  Users,
-  BookOpen,
-  FileText,
-  Settings,
-  StickyNote,
   Clock,
   CalendarIcon,
   ChevronsUpDown,
@@ -18,7 +11,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { Calendar } from "@/components/ui/calendar";
-import type { Session } from "../components/utils/types" // adjust path if needed
+// import type { Session } from "../components/utils/types" // adjust path if needed
 import { useNavigate } from 'react-router-dom';
 import { cn } from "@/lib/utils"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -35,35 +28,35 @@ import { getDropdownCourse } from "@/components/api/backend-methods/Courses";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { getStudentEnrollmentByMod } from "@/components/api/backend-methods/StudentEnrollment";
 // Types for sessions and rosters
-type Roster = {
-  id: string
-  name: string
-  course: string
-  semester: string
-  students: Student[]
-  createdAt: number
-}
+// type Roster = {
+//   id: string
+//   name: string
+//   course: string
+//   semester: string
+//   students: Student[]
+//   createdAt: number
+// }
 
-type Student = {
-  id: string
-  name: string
-  email: string
-  studentId: string
-}
+// type Student = {
+//   id: string
+//   name: string
+//   email: string
+//   studentId: string
+// }
 
-type SessionRecord = {
-  id: string
-  name: string
-  rosterId: string
-  rosterName: string
-  course: string
-  createdAt: number
-  status: "draft" | "active" | "completed"
-  attendanceCount: number
-  totalStudents: number
-  duration?: number
-  recognitionMode?: "live" | "upload"
-}
+// type SessionRecord = {
+//   id: string
+//   name: string
+//   rosterId: string
+//   rosterName: string
+//   course: string
+//   createdAt: number
+//   status: "draft" | "active" | "completed"
+//   attendanceCount: number
+//   totalStudents: number
+//   duration?: number
+//   recognitionMode?: "live" | "upload"
+// }
 
 
 
@@ -71,7 +64,7 @@ export default function SessionsPage() {
   // State management
   const [showCreateSession, setShowCreateSession] = useState(false)
   const [location, setLocation] = useState("")
-  const [sessionName, setSessionName] = useState("")
+  // const [sessionName, setSessionName] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<any>("all")
   const [sessionsByUser, setSessionByUser] = useState<any[]>([])
@@ -226,7 +219,7 @@ export default function SessionsPage() {
   const [selectedStudents, setSelectedStudents] = useState<string[]>([])
 
   const handleDelete = (sessionID: any) => {
-    deleteSession(sessionID).then((response) => {
+    deleteSession(sessionID).then(() => {
       toast.success('Session successfully deleted!')
       getSessionByCreator()
         .then((res) => {
@@ -236,7 +229,7 @@ export default function SessionsPage() {
           setSessionByUser(sorted);
         })
         .catch((err) => console.error(err));
-    }).catch((err) => {
+    }).catch(() => {
       toast.error('Session failed to delete.')
     })
   }

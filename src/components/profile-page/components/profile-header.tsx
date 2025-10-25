@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Camera, Calendar, Mail, MapPin } from "lucide-react";
+import { Camera, Mail } from "lucide-react";
 import { stringFormatter } from "@/components/utils/stringFormatter";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
@@ -103,9 +103,9 @@ export default function ProfileHeader() {
   // Keep design; just swap values
   const displayName = (user?.username ?? username).split("@")[0] || "John Doe";
   const emailText = user?.username ?? "john.doe@example.com";
-  const joined = user?.createdAt
-    ? new Date(user.createdAt).toLocaleString()
-    : "March 2023";
+  // const joined = user?.createdAt
+  //   ? new Date(user.createdAt).toLocaleString()
+  //   : "March 2023";
   const initials = (emailText?.[0] || "J").toUpperCase();
 
   return (

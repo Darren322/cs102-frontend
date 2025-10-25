@@ -1,5 +1,4 @@
 // src/pages/during-session/LiveRecognition.tsx
-import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Play, Square } from "lucide-react";

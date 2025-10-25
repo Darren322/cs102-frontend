@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Users, Plus, Search, Eye, Download, Upload, X, UserPlus, Trash2, Check, ChevronsUpDown } from "lucide-react"
-import { Link } from "react-router-dom"
+import { Users,  Search, Eye,  Check, ChevronsUpDown } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,7 +25,6 @@ import {
   CommandItem,
 } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
-import type { RosterDB } from '../components/utils/types';
 import { getDropdownCourse } from "@/components/api/backend-methods/Courses"
 import { getStudentEnrollmentByMod } from "@/components/api/backend-methods/StudentEnrollment"
 import { addStudentToSession, getAllRoster } from "@/components/api/backend-methods/StudentSession"
@@ -42,15 +40,11 @@ type Student = {
 }
 
 type Roster = {
-  id: string
-  name: string
-  course: string
-  courseCode: string
-  semester: string
+  id: string | null,
+  courseName: string,
+  courseDesc: string,
+  courseCode: string,
   students: Student[]
-  createdAt: number
-  lastModified: number
-  instructor: string
 }
 
 export default function RostersPage() {
@@ -64,7 +58,9 @@ export default function RostersPage() {
 
   useEffect(() => {
     getAllRoster().then((response) => {
-      setRosters(response.data)
+      setRosters(response.data) 
+      // <---backend should return id
+      console.log(response.data)
     }).catch((err) => {
       console.log(err)
     })
@@ -113,8 +109,8 @@ export default function RostersPage() {
 
   }
 
-  const deleteRoster = (id: string) =>
-    setRosters((prev) => prev.filter((r) => r.id !== id))
+  // const deleteRoster = (id: string) =>
+  //   setRosters((prev) => prev.filter((r) => r.id !== id))
 
 
   useEffect(() => {

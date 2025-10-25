@@ -4,11 +4,11 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 //import { useToast } from "@/hooks/use-toast"
-import { X } from "lucide-react"
+
 import { getDropdownCourse } from "@/components/api/backend-methods/Courses"
 import { getMyStudent, getcurrentStudent } from "@/components/api/backend-methods/Student"
 import { createEnrollment } from "@/components/api/backend-methods/StudentEnrollment"
@@ -25,8 +25,8 @@ export default function EnrolPage() {
         faceData: "",
     })
 
-    const [courses, setCourses] = useState<string[]>([])
-    const [currentCourse, setCurrentCourse] = useState("")
+    // const [courses, setCourses] = useState<string[]>([])
+    // const [currentCourse, setCurrentCourse] = useState("")
 
     useEffect(() => {
         const storedEmail = localStorage.getItem("userEmail") || ""
@@ -102,15 +102,15 @@ export default function EnrolPage() {
             return
         }
         
-        const studentObject = {
-            studentId: formData.studentId,
-            username: formData.username || undefined,
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
-            faceData: formData.faceData || "",
-            courses: courses,
-        }
+        // const studentObject = {
+        //     studentId: formData.studentId,
+        //     username: formData.username || undefined,
+        //     name: formData.name,
+        //     email: formData.email,
+        //     phone: formData.phone,
+        //     faceData: formData.faceData || "",
+        //     courses: courses,
+        // }
 
 
         // toast({
@@ -118,46 +118,46 @@ export default function EnrolPage() {
         //   description: "Student enrolled successfully!",
         // })
 
-        setFormData({
-            studentId: "",
-            username: "",
-            name: "",
-            email: formData.email,
-            phone: "",
-            faceData: "",
-        })
-        setCourses([])
+        // setFormData({
+        //     studentId: "",
+        //     username: "",
+        //     name: "",
+        //     email: formData.email,
+        //     phone: "",
+        //     faceData: "",
+        // })
+        // setCourses([])
     }
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target
-        setFormData((prev) => ({ ...prev, [name]: value }))
-    }
+    // const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    //     const { name, value } = e.target
+    //     setFormData((prev) => ({ ...prev, [name]: value }))
+    // }
 
-    const addCourse = () => {
-        const trimmedCourse = currentCourse.trim()
-        if (trimmedCourse && !courses.includes(trimmedCourse)) {
-            setCourses([...courses, trimmedCourse])
-            setCurrentCourse("")
-        } else if (courses.includes(trimmedCourse)) {
-            //   toast({
-            //     title: "Duplicate Course",
-            //     description: "This course has already been added",
-            //     variant: "destructive",
-            //   })
-        }
-    }
+    // const addCourse = () => {
+    //     const trimmedCourse = currentCourse.trim()
+    //     if (trimmedCourse && !courses.includes(trimmedCourse)) {
+    //         setCourses([...courses, trimmedCourse])
+    //         setCurrentCourse("")
+    //     } else if (courses.includes(trimmedCourse)) {
+    //         //   toast({
+    //         //     title: "Duplicate Course",
+    //         //     description: "This course has already been added",
+    //         //     variant: "destructive",
+    //         //   })
+    //     }
+    // }
 
-    const removeCourse = (courseToRemove: string) => {
-        setCourses(courses.filter((course) => course !== courseToRemove))
-    }
+    // const removeCourse = (courseToRemove: string) => {
+    //     setCourses(courses.filter((course) => course !== courseToRemove))
+    // }
 
-    const handleCourseKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === "Enter") {
-            e.preventDefault()
-            addCourse()
-        }
-    }
+    // const handleCourseKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    //     if (e.key === "Enter") {
+    //         e.preventDefault()
+    //         addCourse()
+    //     }
+    // }
     const enrolStudent = () =>{
         // use current studentId and selected course
         const sidRaw = formData.studentId || sessionStorage.getItem('studentId')

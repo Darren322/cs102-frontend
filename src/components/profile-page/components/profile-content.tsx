@@ -33,7 +33,7 @@ export default function ProfileContent() {
       console.log(resp.data)
       setCurStudent(resp.data);
     })
-      .catch((err) => {
+      .catch(() => {
         setCurStudent({});
       })
   }, [localStorage['username']])

@@ -26,7 +26,7 @@ export function LoginForm({
   const [password, setPassword] = React.useState("");
   const [role, setRole] = React.useState<Role>("staff");
   const [showPassword, setShowPassword] = React.useState(false);
-  const [remember, setRemember] = React.useState(false);
+  // const [remember, setRemember] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
   const [pendingEnrollMsg, setPendingEnrollMsg] = React.useState<string | null>(null);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Download, Search, ChevronDown, ChevronUp } from "lucide-react";
+import { Users} from "lucide-react";
 import { getAttendanceRecord } from "../components/api/backend-methods/AttendanceRecord";
 import { useParams } from "react-router-dom";
 

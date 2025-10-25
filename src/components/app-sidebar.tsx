@@ -17,7 +17,8 @@ import {
   DropdownMenuItem,
 } from "./ui/dropdown-menu";
 
-import { Users, Clock, Settings, User, Home, ChevronUp } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { Users, Clock, User, Home, ChevronUp } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@radix-ui/react-avatar";
@@ -39,7 +40,12 @@ export function AppSidebar() {
   const jwt = getUser(); // your util (decoded token or similar)
   const storedUsername =
     sessionStorage.getItem("username") || localStorage.getItem("username") || "";
-
+  type SidebarItem = {
+    id: string;
+    label: string;
+    icon: LucideIcon; 
+    path: string;
+  };
   /** Resolve username/email from storage or JWT claims */
   const username = useMemo(() => {
     if (storedUsername) return storedUsername;
@@ -95,24 +101,24 @@ export function AppSidebar() {
     });
     navigate("/login", { replace: true });
   };
-const [sidebarItems, setSidebarItems] = useState<any>([]);
+  const [sidebarItems, setSidebarItems] = useState<SidebarItem[]>([]);
 
-useEffect(() => {
-  const username = localStorage['role'];
-  console.log(username)
+  useEffect(() => {
+    const username = localStorage['role'];
+    console.log(username)
 
-  if (username === "STAFF") {
-    setSidebarItems([
-      { id: "dashboard", label: "Dashboard", icon: Home, path: "/dashboard" },
-      { id: "sessions", label: "Sessions", icon: Clock, path: "/sessions" },
-      { id: "rosters", label: "Rosters", icon: Users, path: "/rosters" },
-      { id: "students", label: "Students", icon: User, path: "/students" }    ]);
-  } else {
-    setSidebarItems([
-      { id: "enrol", label: "Enrol for Class", icon: Home, path: "/enrolStudent" },
-    ]);
-  }
-}, []); // run once on mount
+    if (username === "STAFF") {
+      setSidebarItems([
+        { id: "dashboard", label: "Dashboard", icon: Home, path: "/dashboard" },
+        { id: "sessions", label: "Sessions", icon: Clock, path: "/sessions" },
+        { id: "rosters", label: "Rosters", icon: Users, path: "/rosters" },
+        { id: "students", label: "Students", icon: User, path: "/students" }]);
+    } else {
+      setSidebarItems([
+        { id: "enrol", label: "Enrol for Class", icon: Home, path: "/enrolStudent" },
+      ]);
+    }
+  }, []); // run once on mount
 
 
   return (
