@@ -240,7 +240,7 @@ export function RegisterForm({
                 onChange={(e) => setStudentId(e.target.value)}
                 onBlur={() => setStudentIdTouched(true)}
                 autoComplete="off"
-                className="pl-9 bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-slate-600 roundex-2xl"
+                className="pl-9 bg-slate-950 rounded-2xl border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-slate-600 roundex-2xl"
               />
             </div>
             {/* Inline validation */}
