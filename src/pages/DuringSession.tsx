@@ -18,6 +18,7 @@ export default function DuringSession() {
       <div className="flex flex-col gap-4 bg-slate-950 text-white min-h-screen">
         <Card className="bg-slate-900/50 border-slate-800/50 rounded-2xl shadow-xl backdrop-blur-sm mx-8 mt-6">
           <DuringHeader onPickLive={() => setMode("live")} onPickUpload={() => setMode("upload")} />
+            
         </Card>
 
         <div className="mx-8">

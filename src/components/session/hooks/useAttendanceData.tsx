@@ -194,6 +194,7 @@ export function useAttendanceData(routeSessionId: string) {
       <ExportDialog open={showExport} onOpenChange={setShowExport} onCSV={actions.exportCSV} onPDF={actions.exportPDF} />
     </>
   );
+  console.log(showBatch);
 
   const components = { ImportCSVButton: ImportAttendanceButton } as const;
 

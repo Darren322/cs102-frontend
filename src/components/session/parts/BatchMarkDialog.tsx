@@ -20,7 +20,7 @@ export function BatchMarkDialog({ open, onOpenChange, onConfirm }: {
 rounded-xl shadow-xl">
                 <DialogHeader>
                     <DialogTitle className="text-lg font-semibold text-amber-300">Batch
-                        Mark Pending Students</DialogTitle>
+                        Mark Students</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 py-2">
                     <div className="flex flex-col space-y-2">
@@ -42,12 +42,12 @@ rounded-xl shadow-xl">
                         <Input value={notes} onChange={(e) => setNotes(e.target.value)}
                             placeholder="e.g. Marked absent after 15 mins..." className="bg-slate-800
 border-slate-700 text-white rounded-2xl" />
-                        18
+                    
                     </div>
                 </div>
                 <DialogFooter className="flex justify-end gap-2">
-                    <Button variant="outline" className="border border-slate-700 textgray-300 hover:bg-slate-800" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button onClick={() => onConfirm(status, notes)} className="bgamber-500/20 hover:bg-amber-500/30 text-amber-300 border borderamber-400/40">Confirm Batch Mark</Button>
+                    <Button variant="outline" className="border rounded-2xl border-slate-700 textgray-300 hover:bg-slate-800" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button onClick={() => onConfirm(status, notes)} className="bg-amber-500/20 rounded-2xl hover:bg-amber-500/30 text-amber-300 border borderamber-400/40">Confirm Batch Mark</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

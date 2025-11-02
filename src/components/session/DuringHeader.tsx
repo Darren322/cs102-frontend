@@ -7,6 +7,9 @@ import { useAttendance } from "./AttendanceProvider";
 
 export function DuringHeader({ onPickLive, onPickUpload }: { onPickLive: () => void; onPickUpload: () => void }) {
   const { sessionMeta, actions, components } = useAttendance();
+  console.log(actions);
+  console.log(components)
+  console.log(sessionMeta)
   const isClosed = sessionMeta.closed;
   const isActive = sessionMeta.active;
   const [closing, setClosing] = React.useState(false);

@@ -91,25 +91,35 @@ export default ImportAttendanceButton;
 
 const parseAttendanceCSV = async (file: File): Promise<AttendanceUpdateRequest[]> => {
   const csvText = await file.text();
-  const lines = csvText.split('\n');
-  const csvWithoutTitle = lines.slice(1).join('\n');
-
+  const lines = csvText.split(/\r?\n/);
+  let trimmed = lines.slice(2);
+  const cutoffIndex = trimmed.findIndex(line =>
+    /Mean|Report/i.test(line)
+  );
+  if (cutoffIndex !== -1) trimmed = trimmed.slice(0, cutoffIndex);
+  const csvWithoutTitle = trimmed.join("\n");
   return new Promise((resolve, reject) => {
     Papa.parse(csvWithoutTitle, {
       header: true,
       skipEmptyLines: true,
       encoding: "utf-8",
+      newline: "\n",
       complete: (results) => {
+        console.log(results)
         const rows = results.data as any[];
+
         const getCellValue = (row: any, headerName: string) => {
-          const actualHeader = Object.keys(row).find(key => key.trim().toLowerCase() === headerName.toLowerCase());
+          const actualHeader = Object.keys(row).find(
+            (key) =>
+              key.trim().replace(/\r/g, "").toLowerCase() ===
+              headerName.toLowerCase()
+          );
           return actualHeader ? row[actualHeader] : undefined;
         };
 
         const validRows = rows.filter((r) => {
           const sid = getCellValue(r, "SID");
           const status = getCellValue(r, "Status");
-
           return (
             sid &&
             status &&
@@ -121,7 +131,7 @@ const parseAttendanceCSV = async (file: File): Promise<AttendanceUpdateRequest[]
         const formatted = validRows.map((r) => ({
           studentId: (getCellValue(r, "SID") || "").trim(),
           status: (getCellValue(r, "Status") || "ABSENT").trim(),
-          method: (getCellValue(r, "Marking Type") || "MANUAL").trim(),
+          method: (getCellValue(r, "MarkingType") || "MANUAL").trim(),
           optionalNotes: (getCellValue(r, "Remarks") || "").trim(),
           recordedBy: "system",
         }));

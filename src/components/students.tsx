@@ -91,7 +91,6 @@ export default function Students() {
                 <TableHead>Student Name</TableHead>
                 <TableHead>Student ID</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -118,9 +117,6 @@ export default function Students() {
                     </TableCell>
                     <TableCell className="text-slate-400">
                       {record.email}
-                    </TableCell>
-                    <TableCell className="text-slate-400">
-                      {record.phone}
                     </TableCell>
                   </TableRow>
                 ))

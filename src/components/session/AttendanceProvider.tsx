@@ -6,7 +6,7 @@ const AttendanceCtx = React.createContext<ReturnType<typeof useAttendanceData> |
 
 export function AttendanceProvider({ sessionId, children }: { sessionId: string; children: React.ReactNode }) {
   const store = useAttendanceData(sessionId);
-  return <AttendanceCtx.Provider value={store}>{children}</AttendanceCtx.Provider>;
+  return <AttendanceCtx.Provider value={store}>{children}{store.dialogs}</AttendanceCtx.Provider>;
 }
 
 export function useAttendance() {
