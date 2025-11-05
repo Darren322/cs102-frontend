@@ -6,7 +6,7 @@ import { useLiveRecognition } from "./hooks/useLiveRecognition";
 import { useAttendance } from "./AttendanceProvider";
 import { cn } from "@/lib/utils";
 
-export function LiveRecognition({ onDone }: { onDone: () => void }) {
+export function LiveRecognition({ deviceId, onDone }: { deviceId: string; onDone: () => void }) { // 👈 ADD deviceId prop
   const { sessionMeta } = useAttendance();
   const {
     refs: { videoRef, serverImgRef, captureRef },
@@ -14,7 +14,7 @@ export function LiveRecognition({ onDone }: { onDone: () => void }) {
     setRunning,
     stats: { fps, serverFps },
     ui: { serverReady },
-  } = useLiveRecognition();
+  } = useLiveRecognition(deviceId); // 👈 PASS deviceId to hook
 
   // Only swap UI to the server image when we *know* frames are arriving
   const showServer = running && serverReady;

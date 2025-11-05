@@ -13,7 +13,7 @@ const WS_BASE = "ws://localhost:8081/ws/live-scan";
  * - Frame send loop
  * - DETECTION BUFFER with 5s flush (de-dupe + cooldown) -> actions.autoMark()
  */
-export function useLiveRecognition() {
+export function useLiveRecognition(deviceId?: string) { // 👈 ADD deviceId parameter
   const { id: routeSessionId } = useParams();
   const { sessionMeta, actions } = useAttendance();
 
@@ -49,16 +49,18 @@ export function useLiveRecognition() {
   const actionsRef = React.useRef(actions);
   React.useEffect(() => { actionsRef.current = actions; }, [actions]);
 
-  // Local preview boot (show camera even before start)
+  // 👇 UPDATED: Local preview boot with deviceId support
   React.useEffect(() => {
     if (!videoRef.current) return;
     let cancelled = false;
     (async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: WIDTH, height: HEIGHT, facingMode: "user" },
-          audio: false,
-        });
+        // Build constraints based on deviceId
+        const constraints = deviceId
+          ? { video: { deviceId: { exact: deviceId }, width: WIDTH, height: HEIGHT }, audio: false }
+          : { video: { width: WIDTH, height: HEIGHT, facingMode: "user" }, audio: false };
+        
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
         if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
         const v = videoRef.current!;
         try { await v.pause(); } catch {}
@@ -81,7 +83,7 @@ export function useLiveRecognition() {
       const tracks = (videoRef.current?.srcObject as MediaStream | null)?.getTracks() ?? [];
       tracks.forEach(t => t.stop());
     };
-  }, []);
+  }, [deviceId]); // 👈 Re-run when deviceId changes
 
   // WebSocket receive
   React.useEffect(() => {
