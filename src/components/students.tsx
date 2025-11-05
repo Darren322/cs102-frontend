@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import {  Search } from "lucide-react"
+import { Search } from "lucide-react"
 import {
   Card,
   CardHeader,
@@ -19,6 +19,7 @@ import {
   TableCell,
 } from "@/components/ui/table"
 import { getAllStudent } from "./api/backend-methods/Student"
+import { Avatar, AvatarFallback, AvatarImage } from "@radix-ui/react-avatar"
 
 
 export default function Students() {
@@ -41,6 +42,7 @@ export default function Students() {
   const filteredStudents = allStudents.filter((s: any) =>
     s.username.toLowerCase().includes(searchTerm.toLowerCase())
   )
+  console.log(filteredStudents)
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 py-12 px-6">
@@ -91,6 +93,7 @@ export default function Students() {
                 <TableHead>Student Name</TableHead>
                 <TableHead>Student ID</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Profile Pic</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -117,6 +120,17 @@ export default function Students() {
                     </TableCell>
                     <TableCell className="text-slate-400">
                       {record.email}
+                    </TableCell>
+                    <TableCell>
+                      {record.profilePicUrl != null ? (
+                        <img src={record.profilePicUrl} alt="" width={80} height={80} className="rounded-2xl"/>
+                      ) : (
+                        <Avatar>
+                          <AvatarImage src="https://github.com/shadcn.png" width={80} height={80} className="rounded-2xl"/>
+                          <AvatarFallback>CN</AvatarFallback>
+                        </Avatar>
+                      )}
+
                     </TableCell>
                   </TableRow>
                 ))
