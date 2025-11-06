@@ -11,6 +11,7 @@ let instance: FaceLandmarker | null = null;
 
 export async function createFaceLandmarker() {
 if (instance) return instance;
+console.log("YES INSTANCE");
 const resolver = await FilesetResolver.forVisionTasks(WASM_URL);
 instance = await FaceLandmarker.createFromOptions(resolver, {
 baseOptions: { modelAssetPath: MODEL_URL, delegate: "CPU" },
