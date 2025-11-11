@@ -40,7 +40,10 @@ export function UploadImage({ onDone }: { onDone: () => void }) {
         .map((d) => ({
           studentId: d.studentId,
           confidence: d.confidence,
-          timestamp: new Date().toISOString(),
+          timestamp:new Date().toLocaleString(    
+            "en-SG",
+            { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true }
+          ),
           recordedBy: localStorage["username"],
         }));
       if (payload.length) await actions.autoMark(payload);
