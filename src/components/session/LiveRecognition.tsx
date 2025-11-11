@@ -14,7 +14,7 @@ export function LiveRecognition({ deviceId, onDone }: { deviceId: string; onDone
     setRunning,
     stats: { fps, serverFps },
     ui: { serverReady },
-  } = useLiveRecognition(deviceId); // 👈 PASS deviceId to hook
+  } = useLiveRecognition(deviceId); // PASS deviceId to hook
 
   // Only swap UI to the server image when we *know* frames are arriving
   const showServer = running && serverReady;

@@ -13,6 +13,7 @@ type Step = Direction;
 
 const DEFAULT_STEPS: Step[] = [
   "STRAIGHT",
+  "STRAIGHT",
   "UP-LEFT",
   "UP",
   "UP-RIGHT",
@@ -21,6 +22,7 @@ const DEFAULT_STEPS: Step[] = [
   "DOWN",
   "DOWN-LEFT",
   "LEFT",
+   "STRAIGHT",
    "STRAIGHT",
 ];
 

@@ -15,7 +15,7 @@ function dirToAngle(d: Direction) {
     case "DOWN-LEFT": return 135;
     case "LEFT": return 180;
     case "UP-LEFT": return -135;
-    default: return -90; // STRAIGHT/NO_FACE not used for a single arc
+    default: return -90; 
   }
 }
 

@@ -199,12 +199,20 @@ export function useLiveRecognition(deviceId?: string) { // 👈 ADD deviceId par
           const last = recent.get(name) ?? 0;
           return now - last >= COOLDOWN_MS;
         })
-        .map(({ name, confidence }) => ({
-          studentId: name,
-          confidence,
-          timestamp: new Date().toISOString(),
-          recordedBy: localStorage["username"],
-        }));
+        .map(({ name, confidence }) => {
+          
+          const clientLocalTime = new Date().toLocaleString(    
+            "en-SG",
+            { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true }
+          );
+          return {
+            studentId: name,
+            confidence,
+            timestamp: clientLocalTime,               
+          
+            recordedBy: localStorage["username"],
+          };
+        });
 
       if (!payload.length) return;
 
@@ -224,7 +232,7 @@ export function useLiveRecognition(deviceId?: string) { // 👈 ADD deviceId par
   }, [running]);
   // -------------------------------------------------------------------
 
-  // Send loop
+  
   React.useEffect(() => {
     if (!running) {
       if (fpsIntervalRef.current != null) { clearInterval(fpsIntervalRef.current); fpsIntervalRef.current = null; }
